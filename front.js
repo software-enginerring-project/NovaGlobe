@@ -79,7 +79,7 @@ function App() {
           <button className="search-btn" type="button">Search</button>
         </div>
         <div className="top-actions">
-          <button className="chip" type="button">Compare</button>
+          <button className="chip" type="button">AI Tooling</button>
           <div className="avatar-wrap">
             <button
               className="avatar"
@@ -142,9 +142,13 @@ function App() {
               </div>
             ))}
           </div>
-          <div className="panel-footer icons">
-            <button className="icon-btn" type="button">Network Explorer</button>
-            <button className="icon-btn" type="button">Insight Feeds</button>
+          <div className="panel-footer search-footer">
+            <input
+              className="panel-search"
+              placeholder="Search feed"
+              aria-label="Search feed"
+            />
+            <button className="search-btn" type="button">Search</button>
           </div>
         </section>
       </main>

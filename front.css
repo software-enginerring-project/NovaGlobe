@@ -382,6 +382,27 @@ body {
   flex-wrap: wrap;
 }
 
+.search-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-search {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 200, 255, 0.25);
+  background: rgba(4, 12, 20, 0.8);
+  color: var(--ink);
+  outline: none;
+  font-size: 12px;
+}
+
+.panel-search::placeholder {
+  color: rgba(217, 242, 255, 0.55);
+}
+
 .icon-btn {
   border-radius: 16px;
   padding: 10px 12px;
