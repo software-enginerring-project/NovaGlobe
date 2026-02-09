@@ -1,4 +1,4 @@
-const { useState } = React;
+const { useEffect, useRef, useState } = React;
 
 const semanticResults = [
   {
@@ -31,9 +31,34 @@ const liveFeed = [
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panelsVisible, setPanelsVisible] = useState(false);
+  const pulseTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimer.current) {
+        clearTimeout(pulseTimer.current);
+      }
+    };
+  }, []);
 
   const goToLogin = () => {
     window.location.href = "login.html";
+  };
+
+  const handleCenterClick = () => {
+    if (!panelsVisible) {
+      setPanelsVisible(true);
+      return;
+    }
+
+    setPanelsVisible(false);
+    if (pulseTimer.current) {
+      clearTimeout(pulseTimer.current);
+    }
+    pulseTimer.current = setTimeout(() => {
+      setPanelsVisible(true);
+    }, 160);
   };
 
   return (
@@ -54,7 +79,7 @@ function App() {
           <button className="search-btn" type="button">Search</button>
         </div>
         <div className="top-actions">
-          <button className="chip" type="button">AI Tooling</button>
+          <button className="chip" type="button">Compare</button>
           <div className="avatar-wrap">
             <button
               className="avatar"
@@ -82,7 +107,13 @@ function App() {
       <div className="gridlines" aria-hidden="true" />
       <div className="ambient-orb" aria-hidden="true" />
 
-      <main className="layout">
+      <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
+        <section className="center" onClick={handleCenterClick}>
+          <div className="center-shell" role="button" tabIndex={0}>
+            <div className="globe-placeholder">Globe API Mount</div>
+          </div>
+        </section>
+
         <section className="panel left">
           <h3>Semantic Search Results</h3>
           <div className="list">
@@ -98,12 +129,6 @@ function App() {
           </div>
           <div className="panel-footer">
             <button className="chip" type="button">Digital Twin Simulation</button>
-          </div>
-        </section>
-
-        <section className="center">
-          <div className="center-shell">
-            <div className="globe-placeholder">Globe API Mount</div>
           </div>
         </section>
 
