@@ -1,0 +1,309 @@
+:root {
+  --ink: #d9f2ff;
+  --ink-dim: rgba(217, 242, 255, 0.7);
+  --cyan: #4bdcff;
+  --aqua: #2cc9ff;
+  --teal: #1fe2c4;
+  --navy: #0b1c2e;
+  --deep: #050a12;
+  --glass: rgba(10, 26, 44, 0.6);
+  --glass-strong: rgba(10, 26, 44, 0.82);
+  --stroke: rgba(90, 200, 255, 0.22);
+  --glow: 0 0 50px rgba(75, 220, 255, 0.18);
+  --radius-lg: 28px;
+  --radius-md: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 20% 20%, #1b3553 0%, #0b1625 38%, #050a12 72%);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.shell {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+}
+
+.ambient-orb {
+  position: absolute;
+  width: 620px;
+  height: 620px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(75, 220, 255, 0.7), rgba(75, 220, 255, 0.05) 65%, transparent 70%);
+  filter: blur(1px);
+  box-shadow: 0 0 90px rgba(75, 220, 255, 0.25);
+  animation: drift 18s ease-in-out infinite;
+}
+
+.ambient-orb::after {
+  content: "";
+  position: absolute;
+  inset: 14% 14% auto auto;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, rgba(31, 226, 196, 0.9), rgba(31, 226, 196, 0.2) 58%, transparent 62%);
+  box-shadow: 0 0 80px rgba(31, 226, 196, 0.25);
+}
+
+@keyframes drift {
+  0%, 100% {
+    transform: translate(-12%, -6%) scale(1);
+  }
+  50% {
+    transform: translate(8%, 10%) scale(1.03);
+  }
+}
+
+.gridlines {
+  position: absolute;
+  inset: -20% -10% -10% -20%;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 120px 120px;
+  opacity: 0.6;
+  transform: rotate(-8deg);
+}
+
+.card {
+  position: relative;
+  width: min(100%, 920px);
+  padding: 48px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(11, 28, 46, 0.85), rgba(8, 16, 30, 0.78));
+  border: 1px solid var(--stroke);
+  box-shadow: 0 30px 90px rgba(3, 10, 22, 0.75), var(--glow);
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 36px;
+  backdrop-filter: blur(16px);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brand h1 {
+  font-family: "Syncopate", "Space Grotesk", sans-serif;
+  letter-spacing: 1px;
+  margin: 0;
+  font-size: 28px;
+}
+
+.brand p {
+  margin: 0;
+  color: var(--ink-dim);
+  line-height: 1.6;
+}
+
+.features {
+  margin-top: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.feature {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(7, 18, 30, 0.5);
+  border: 1px solid rgba(90, 200, 255, 0.12);
+}
+
+.feature span {
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+
+.login {
+  background: var(--glass);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(90, 200, 255, 0.18);
+  padding: 32px;
+  display: grid;
+  gap: 16px;
+}
+
+.login h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  display: block;
+  margin-bottom: 6px;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 200, 255, 0.25);
+  background: rgba(4, 12, 20, 0.8);
+  color: var(--ink);
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus {
+  border-color: rgba(75, 220, 255, 0.7);
+  box-shadow: 0 0 18px rgba(75, 220, 255, 0.25);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.row a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+button {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #3fe3ff, #1ad4b5);
+  color: #04131f;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 16px 40px rgba(31, 226, 196, 0.25);
+}
+
+button:hover {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 18px 50px rgba(31, 226, 196, 0.35);
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(7, 18, 30, 0.8);
+  border: 1px solid rgba(90, 200, 255, 0.3);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.google-btn:hover {
+  box-shadow: 0 12px 30px rgba(75, 220, 255, 0.18);
+}
+
+.google-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(#4285f4 0deg 90deg, #34a853 90deg 180deg, #fbbc05 180deg 270deg, #ea4335 270deg 360deg);
+  color: #05101b;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--cyan);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.helper {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(31, 226, 196, 0.12);
+  border: 1px solid rgba(31, 226, 196, 0.4);
+  color: #b9fff1;
+  font-size: 12px;
+}
+
+.footer {
+  font-size: 12px;
+  color: rgba(217, 242, 255, 0.55);
+}
+
+.footer-row {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.signup {
+  color: var(--cyan);
+  font-size: 12px;
+}
+
+.badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(7, 18, 30, 0.7);
+  border: 1px solid rgba(90, 200, 255, 0.2);
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-template-columns: 1fr;
+    padding: 32px 24px;
+  }
+
+  .ambient-orb {
+    width: 420px;
+    height: 420px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    overflow: auto;
+  }
+
+  .login {
+    padding: 24px;
+  }
+}
