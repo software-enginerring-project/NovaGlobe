@@ -79,7 +79,7 @@ function App() {
           <button className="search-btn" type="button">Search</button>
         </div>
         <div className="top-actions">
-          <button className="chip" type="button">AI Tooling</button>
+          <button className="chip" type="button">Compare</button>
           <div className="avatar-wrap">
             <button
               className="avatar"
