@@ -43,7 +43,7 @@ function App() {
   }, []);
 
   const goToLogin = () => {
-    window.location.href = "login.html";
+    window.location.href = "/login";
   };
 
   const handleCenterClick = () => {
