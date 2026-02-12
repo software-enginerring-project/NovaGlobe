@@ -224,6 +224,9 @@ body {
 
 .menu-item {
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #0d1f31;
   border: 1px solid rgba(90, 200, 255, 0.18);
   color: #e9f7ff;
@@ -238,6 +241,21 @@ body {
   background: #122a42;
 }
 
+
+.menu-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  color: #7fe7ff;
+  flex-shrink: 0;
+}
+
+.menu-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
 .menu-divider {
   height: 1px;
   background: rgba(90, 200, 255, 0.3);
@@ -466,3 +484,5 @@ body {
     justify-content: flex-start;
   }
 }
+
+

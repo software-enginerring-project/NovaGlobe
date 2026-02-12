@@ -93,11 +93,30 @@ function App() {
             {menuOpen && (
               <div className="avatar-menu" role="menu">
                 <button className="menu-item" type="button" onClick={goToLogin}>
-                  Sign in / Sign up
+                  <span className="menu-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" />
+                    </svg>
+                  </span>
+                  <span>Sign in / Sign up</span>
                 </button>
                 <div className="menu-divider" />
-                <button className="menu-item" type="button">My profile</button>
-                <button className="menu-item" type="button">History</button>
+                <button className="menu-item" type="button">
+                  <span className="menu-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" />
+                    </svg>
+                  </span>
+                  <span>My profile</span>
+                </button>
+                <button className="menu-item" type="button">
+                  <span className="menu-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5v5.4l3.5 2.1-.8 1.3L11.5 13V7H13z" />
+                    </svg>
+                  </span>
+                  <span>History</span>
+                </button>
               </div>
             )}
           </div>
@@ -158,3 +177,7 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
+
+
+
+
