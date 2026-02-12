@@ -10,3 +10,7 @@ def home():
 @main.route("/login")
 def front():
     return render_template("login.html")
+
+@main.route("/profile")
+def profile():
+    return render_template("profile2.html")

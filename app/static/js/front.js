@@ -45,7 +45,9 @@ function App() {
   const goToLogin = () => {
     window.location.href = "/login";
   };
-
+    const goToProfile = () => {
+      window.location.href = "/profile";
+    };
   const handleCenterClick = () => {
     if (!panelsVisible) {
       setPanelsVisible(true);
@@ -96,7 +98,7 @@ function App() {
                   Sign in / Sign up
                 </button>
                 <div className="menu-divider" />
-                <button className="menu-item" type="button">My profile</button>
+                <button className="menu-item" type="button"  onClick={goToProfile}>My profile</button>
                 <button className="menu-item" type="button">History</button>
               </div>
             )}
