@@ -45,9 +45,12 @@ function App() {
   const goToLogin = () => {
     window.location.href = "/login";
   };
-    const goToProfile = () => {
-      window.location.href = "/profile";
-    };
+  const goToProfile = () => {
+    window.location.href = "/profile";
+  };
+  const handleCompareClick = () => {
+    window.alert("select any two places");
+  };
   const handleCenterClick = () => {
     if (!panelsVisible) {
       setPanelsVisible(true);
@@ -81,7 +84,7 @@ function App() {
           <button className="search-btn" type="button">Search</button>
         </div>
         <div className="top-actions">
-          <button className="chip" type="button">Compare</button>
+          <button className="chip" type="button" onClick={handleCompareClick}>Compare</button>
           <div className="avatar-wrap">
             <button
               className="avatar"
@@ -103,7 +106,7 @@ function App() {
                   <span>Sign in / Sign up</span>
                 </button>
                 <div className="menu-divider" />
-                <button className="menu-item" type="button">
+                <button className="menu-item" type="button" onClick={goToProfile}>
                   <span className="menu-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                       <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" />
