@@ -43,9 +43,11 @@ function App() {
   }, []);
 
   const goToLogin = () => {
-    window.location.href = "login.html";
+    window.location.href = "/login";
   };
-
+    const goToProfile = () => {
+      window.location.href = "/profile";
+    };
   const handleCenterClick = () => {
     if (!panelsVisible) {
       setPanelsVisible(true);
@@ -177,7 +179,3 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
-
-
-
-

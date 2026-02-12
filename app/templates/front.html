@@ -3,18 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NovaGlobe — Front Page</title>
+    <title>NovaGlobe ï¿½ Front Page</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Syncopate:wght@400;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="front.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/front.css') }}">
+    <!-- Cesium CSS -->
+    <link
+      href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css"
+      rel="stylesheet"/>
+
   </head>
   <body>
     <div id="root"></div>
-
+    
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="text/babel" src="front.js"></script>
+    <script type="text/babel" src="{{ url_for('static', filename='js/front.js') }}"></script>
+    <!-- Cesium JS -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+    <script>
+      Cesium.Ion.defaultAccessToken = "{{ CESIUM_TOKEN }}";
+    </script>
+      <script src="{{ url_for('static', filename='js/cesium_app.js') }}"></script>
   </body>
 </html>
