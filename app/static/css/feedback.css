@@ -1,0 +1,138 @@
+.feedback-panel {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(9, 15, 31, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+}
+
+.feedback-panel.is-open {
+  max-height: 260px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.feedback-label {
+  font-size: 0.8rem;
+  color: #9ba8c2;
+  text-align: left;
+}
+
+.feedback-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8edf7;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.feedback-textarea:focus {
+  border-color: rgba(47, 138, 216, 0.7);
+  box-shadow: 0 0 0 2px rgba(47, 138, 216, 0.2);
+}
+
+.feedback-submit {
+  justify-self: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #2f8ad8;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(47, 138, 216, 0.3);
+}
+
+.password-panel {
+  margin-top: 14px;
+  padding: 16px;
+  background: rgba(9, 15, 31, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+}
+
+.password-panel.is-open {
+  max-height: 320px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.password-label {
+  font-size: 0.78rem;
+  color: #9ba8c2;
+  text-align: left;
+}
+
+.password-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8edf7;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.password-input:focus {
+  border-color: rgba(47, 138, 216, 0.7);
+  box-shadow: 0 0 0 2px rgba(47, 138, 216, 0.2);
+}
+
+.password-message {
+  min-height: 18px;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.password-message.error {
+  color: #f08585;
+}
+
+.password-message.success {
+  color: #7ee5b8;
+}
+
+.password-submit {
+  justify-self: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #2f8ad8;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(47, 138, 216, 0.3);
+}
+
+.editable[contenteditable="true"] {
+  outline: 1px solid rgba(47, 138, 216, 0.7);
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-card.is-editing .ghost#edit-profile-btn {
+  background: #2f8ad8;
+  color: white;
+  border-color: transparent;
+}
