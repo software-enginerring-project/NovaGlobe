@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NovaGlobe Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile1.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon">NG</span>
+        <div>
+          <p class="brand-name">NovaGlobe</p>
+          <p class="brand-sub">Profile Console</p>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#">Dashboard</a>
+        <a href="#">Sign out</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="profile-card">
+        <div class="avatar-wrap">
+          <div class="avatar">JD</div>
+          <button class="icon-btn edit" type="button" aria-label="Edit">
+            E
+          </button>
+          <button class="icon-btn verify" type="button" aria-label="Verified">
+            V
+          </button>
+        </div>
+
+        <h1 class="username">{{username}}</h1>
+        <span class="role-pill">{{ROLE}}</span>
+
+        <div class="info-list">
+          <div class="info-item">
+            <span class="info-icon">@</span>
+            <div>
+              <p class="info-label">Email</p>
+              <p class="info-value">rhea.kline@novaglobe.io</p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-icon green">A</span>
+            <div>
+              <p class="info-label">Account Type</p>
+              <p class="info-value">{{role}}</p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-icon purple">M</span>
+            <div>
+              <p class="info-label">Member Since</p>
+              <p class="info-value">January 2024</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="ghost">Edit Profile</button>
+          <button type="button" class="ghost">Security</button>
+        </div>
+
+        <button type="button" class="primary">Give Feedback</button>
+      </section>
+    </main>
+  </body>
+</html>
