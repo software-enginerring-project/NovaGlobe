@@ -13,4 +13,4 @@ def front():
 
 @main.route("/profile")
 def profile():
-    return render_template("profile2.html")
+    return render_template("profile2.html") 
