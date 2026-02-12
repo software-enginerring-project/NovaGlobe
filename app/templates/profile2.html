@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NovaGlobe Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/profile1.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/feedback.css') }}" />
   </head>
   <body>
     <header class="topbar">
@@ -22,7 +23,7 @@
     </header>
 
     <main class="page">
-      <section class="profile-card">
+      <section class="profile-card" id="profile-card">
         <div class="avatar-wrap">
           <div class="avatar">JD</div>
           <button class="icon-btn edit" type="button" aria-label="Edit">
@@ -33,15 +34,23 @@
           </button>
         </div>
 
-        <h1 class="username">{{username}}</h1>
-        <span class="role-pill">{{ROLE}}</span>
+        <h1 class="username editable" data-field="username">{{username}}</h1>
+        <span class="role-pill editable" data-field="role">{{ROLE}}</span>
 
         <div class="info-list">
+          <div class="info-item">
+            <span class="info-icon">U</span>
+            <div>
+              <p class="info-label">Name</p>
+              <p class="info-value editable" data-field="username">{{username}}</p>
+            </div>
+          </div>
+
           <div class="info-item">
             <span class="info-icon">@</span>
             <div>
               <p class="info-label">Email</p>
-              <p class="info-value">rhea.kline@novaglobe.io</p>
+              <p class="info-value editable" data-field="email">rhea.kline@novaglobe.io</p>
             </div>
           </div>
 
@@ -49,7 +58,7 @@
             <span class="info-icon green">A</span>
             <div>
               <p class="info-label">Account Type</p>
-              <p class="info-value">{{role}}</p>
+              <p class="info-value" data-field="account">{{role}}</p>
             </div>
           </div>
 
@@ -57,18 +66,71 @@
             <span class="info-icon purple">M</span>
             <div>
               <p class="info-label">Member Since</p>
-              <p class="info-value">January 2024</p>
+              <p class="info-value" data-field="member-since">January 2024</p>
             </div>
           </div>
         </div>
 
         <div class="actions">
-          <button type="button" class="ghost">Edit Profile</button>
-          <button type="button" class="ghost">Security</button>
+          <button type="button" class="ghost" id="edit-profile-btn">Edit Profile</button>
+          <button
+            type="button"
+            class="ghost"
+            id="change-password-toggle"
+            aria-expanded="false"
+          >
+            Change Password
+          </button>
         </div>
 
-        <button type="button" class="primary">Give Feedback</button>
+        <button type="button" class="primary" id="feedback-toggle" aria-expanded="false">
+          Give Feedback
+        </button>
+
+        <div class="password-panel" id="password-panel" aria-hidden="true">
+          <label class="password-label" for="current-password">Current Password</label>
+          <input
+            id="current-password"
+            class="password-input"
+            type="password"
+            placeholder="Enter current password"
+          />
+
+          <label class="password-label" for="new-password">New Password</label>
+          <input
+            id="new-password"
+            class="password-input"
+            type="password"
+            placeholder="Enter new password"
+          />
+
+          <label class="password-label" for="confirm-password">Confirm Password</label>
+          <input
+            id="confirm-password"
+            class="password-input"
+            type="password"
+            placeholder="Confirm new password"
+          />
+
+          <p class="password-message" id="password-message" role="status"></p>
+
+          <button type="button" class="password-submit" id="password-submit">
+            Update Password
+          </button>
+        </div>
+
+        <div class="feedback-panel" id="feedback-panel" aria-hidden="true">
+          <label class="feedback-label" for="feedback-text">Share your feedback</label>
+          <textarea
+            id="feedback-text"
+            class="feedback-textarea"
+            placeholder="Type your feedback here..."
+          ></textarea>
+          <button type="button" class="feedback-submit">Submit</button>
+        </div>
       </section>
     </main>
+
+    <script src="{{ url_for('static', filename='js/feedback.js') }}"></script>
   </body>
 </html>
