@@ -1,24 +1,11 @@
-const { useEffect, useRef, useState } = React;
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../assets/css/front.css';
 
 const semanticResults = [
-  {
-    title: "Pacific Gridstream",
-    detail: "Ocean power simulation",
-    score: "102%",
-    tone: "good",
-  },
-  {
-    title: "Amsterdam Net Power",
-    detail: "ES research initiative",
-    score: "83%",
-    tone: "mid",
-  },
-  {
-    title: "Freiburg City",
-    detail: "EcoGrid status",
-    score: "68%",
-    tone: "warm",
-  },
+  { title: "Pacific Gridstream", detail: "Ocean power simulation", score: "102%", tone: "good", },
+  { title: "Amsterdam Net Power", detail: "ES research initiative", score: "83%", tone: "mid", },
+  { title: "Freiburg City", detail: "EcoGrid status", score: "68%", tone: "warm", },
 ];
 
 const liveFeed = [
@@ -29,10 +16,11 @@ const liveFeed = [
   { label: "EcoPulse API", value: "99" },
 ];
 
-function App() {
+export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panelsVisible, setPanelsVisible] = useState(false);
+  const [panelsVisible, setPanelsVisible] = useState(true);
   const pulseTimer = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     return () => {
@@ -42,29 +30,9 @@ function App() {
     };
   }, []);
 
-  const goToLogin = () => {
-    window.location.href = "/login";
-  };
-  const goToProfile = () => {
-    window.location.href = "/profile";
-  };
-  const handleCompareClick = () => {
-    window.alert("select any two places");
-  };
-  const handleCenterClick = () => {
-    if (!panelsVisible) {
-      setPanelsVisible(true);
-      return;
-    }
-
-    setPanelsVisible(false);
-    if (pulseTimer.current) {
-      clearTimeout(pulseTimer.current);
-    }
-    pulseTimer.current = setTimeout(() => {
-      setPanelsVisible(true);
-    }, 160);
-  };
+  const goToLogin = () => navigate('/login');
+  const goToProfile = () => navigate('/profile');
+  const handleCompareClick = () => window.alert("select any two places");
 
   return (
     <div className="shell dashboard">
@@ -84,6 +52,9 @@ function App() {
           <button className="search-btn" type="button">Search</button>
         </div>
         <div className="top-actions">
+          <button className="icon-btn" onClick={() => setPanelsVisible(!panelsVisible)}>
+            {panelsVisible ? 'Hide Data' : 'Show Data'}
+          </button>
           <button className="chip" type="button" onClick={handleCompareClick}>Compare</button>
           <div className="avatar-wrap">
             <button
@@ -129,14 +100,8 @@ function App() {
       </header>
 
       <div className="gridlines" aria-hidden="true" />
-      <div className="ambient-orb" aria-hidden="true" />
 
       <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
-        <section className="center" onClick={handleCenterClick}>
-          <div className="center-shell" role="button" tabIndex={0}>
-            <div className="globe-placeholder">Globe API Mount</div>
-          </div>
-        </section>
 
         <section className="panel left">
           <h3>Semantic Search Results</h3>
@@ -179,6 +144,3 @@ function App() {
     </div>
   );
 }
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);

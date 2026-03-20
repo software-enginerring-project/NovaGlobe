@@ -1,6 +1,8 @@
-const { useState } = React;
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../assets/css/styles.css';
 
-function App() {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -8,9 +10,16 @@ function App() {
   const [username, setUsername] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetSent, setResetSent] = useState(false);
+  
+  const navigate = useNavigate();
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (mode === "login") {
+      navigate("/"); // Redirect to Home on login
+    } else if (mode === "signup") {
+      setMode("login");
+    }
   };
 
   const handleForgot = () => {
@@ -24,8 +33,7 @@ function App() {
   };
 
   return (
-    <div className="shell">
-      <div className="ambient-orb" aria-hidden="true" />
+    <div className="shell login-shell">
       <div className="gridlines" aria-hidden="true" />
 
       <main className="card">
@@ -77,7 +85,7 @@ function App() {
                   <input
                     id="password"
                     type="password"
-                    placeholder="????????"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -225,6 +233,3 @@ function App() {
     </div>
   );
 }
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
