@@ -93,7 +93,7 @@
   border-radius: 24px;
   border: 1px solid rgba(75, 220, 255, 0.2);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
+  overflow: visible;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
@@ -217,6 +217,7 @@
 .avatar-wrap {
   position: relative;
   z-index: 20;
+  justify-self: end;
 }
 
 .avatar {
@@ -236,7 +237,7 @@
 .avatar-menu {
   position: absolute;
   right: 0;
-  top: 48px;
+  top: calc(100% + 10px);
   min-width: 210px;
   background: #0a1522;
   border: 1px solid rgba(90, 200, 255, 0.55);
@@ -299,6 +300,11 @@
   height: 1px;
   background: rgba(90, 200, 255, 0.3);
   margin: 4px 0;
+}
+
+.cesium-widget-credits,
+.cesium-viewer-bottom {
+  display: none !important;
 }
 
 .layout {
