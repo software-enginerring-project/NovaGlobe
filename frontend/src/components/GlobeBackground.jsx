@@ -1,51 +1,66 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
+import * as Cesium from "cesium";
+import "cesium/Build/Cesium/Widgets/widgets.css";
 
 export default function GlobeBackground() {
   const cesiumContainerRef = useRef(null);
 
   useEffect(() => {
-    if (window.Cesium && cesiumContainerRef.current) {
-        window.Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN;
-        const viewer = new window.Cesium.Viewer(cesiumContainerRef.current, {
-            terrain: window.Cesium.Terrain.fromWorldTerrain(),
-            timeline: false,
-            animation: false,
-            baseLayerPicker: false,
-            geocoder: false,
-            homeButton: false,
-            infoBox: false,
-            sceneModePicker: false,
-            selectionIndicator: false,
-            navigationHelpButton: false,
-            navigationInstructionsInitiallyVisible: false,
-            fullscreenButton: false,
-            scene3DOnly: true, // Optimizes performance by disabling 2D features
+    if (!cesiumContainerRef.current) return;
+
+    const token = import.meta.env.VITE_CESIUM_ION_TOKEN;
+    console.log("TOKEN:", token);
+
+    if (!token) {
+      console.error("❌ Missing token");
+      return;
+    }
+
+    Cesium.Ion.defaultAccessToken = token;
+
+    let viewer;
+
+    const init = async () => {
+      try {
+        // ✅ CORRECT modern API
+        const terrainProvider = await Cesium.createWorldTerrainAsync();
+
+        viewer = new Cesium.Viewer(cesiumContainerRef.current, {
+          terrainProvider,
+          timeline: false,
+          animation: false,
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          infoBox: false,
+          sceneModePicker: false,
+          selectionIndicator: false,
+          navigationHelpButton: false,
+          fullscreenButton: false,
+          scene3DOnly: true,
         });
 
-        // Hide the logo
-        const creditContainer = viewer.bottomContainer;
-        if (creditContainer) {
-             creditContainer.style.display = 'none';
-        }
-        
-        return () => {
-             viewer.destroy();
-        }
-    }
+        viewer.scene.globe.enableLighting = true;
+      } catch (err) {
+        console.error("❌ Cesium error:", err);
+      }
+    };
+
+    init();
+
+    return () => {
+      if (viewer) viewer.destroy();
+    };
   }, []);
 
   return (
-    <div 
-      ref={cesiumContainerRef} 
-      style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        width: '100vw', 
-        height: '100vh', 
+    <div
+      ref={cesiumContainerRef}
+      style={{
+        position: "fixed",
+        inset: 0,
         zIndex: 0,
-        pointerEvents: 'auto' 
-      }} 
+      }}
     />
   );
 }
