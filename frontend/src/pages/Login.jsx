@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../assets/css/styles.css';
+import { GoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
+
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,6 +33,22 @@ export default function Login() {
   const handleReset = (event) => {
     event.preventDefault();
     setResetSent(true);
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const token = credentialResponse.credential;
+
+      await axios.post(
+        "/api/auth/google",
+        { token },
+        { withCredentials: true }
+      );
+
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -107,12 +126,12 @@ export default function Login() {
                 </div>
                 <button type="submit">Access NovaGlobe</button>
               </form>
-              <button className="google-btn" type="button">
-                <span className="google-icon" aria-hidden="true">
-                  G
-                </span>
-                Sign in with Google
-              </button>
+              <div style={{ marginTop: 16 }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => console.log("Login Failed")}
+                />
+              </div>
               <div className="row footer-row">
                 <span className="footer">Protected by NovaShield security layers.</span>
                 <button
@@ -174,12 +193,12 @@ export default function Login() {
                 </div>
                 <button type="submit">Create NovaGlobe account</button>
               </form>
-              <button className="google-btn" type="button">
-                <span className="google-icon" aria-hidden="true">
-                  G
-                </span>
-                Sign up with Google
-              </button>
+              <div style={{ marginTop: 16 }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => console.log("Login Failed")}
+                />
+              </div>
               <div className="row footer-row">
                 <span className="footer">Protected by NovaShield security layers.</span>
                 <button
