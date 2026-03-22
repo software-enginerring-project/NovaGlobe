@@ -96,12 +96,6 @@ export default function Profile() {
         <section className={`profile-card ${isEditing ? 'is-editing' : ''}`} id="profile-card">
           <div className="avatar-wrap">
             <div className="avatar">RK</div>
-            <button className="icon-btn edit" type="button" aria-label="Edit" onClick={handleEditToggle}>
-              E
-            </button>
-            <button className="icon-btn verify" type="button" aria-label="Verified">
-              V
-            </button>
           </div>
 
           <h1 
