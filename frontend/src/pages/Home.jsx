@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../assets/css/front.css';
+import Navbar from '../components/Navbar';
+import SidePanels from '../components/SidePanels';
 
 const semanticResults = [
   { title: "Pacific Gridstream", detail: "Ocean power simulation", score: "102%", tone: "good", },
@@ -55,115 +57,25 @@ export default function Home() {
 
   return (
     <div className="shell dashboard">
-      <header className="topbar">
-        <div className="brandmark">
-          <div className="spark" aria-hidden="true"></div>
-          <span>NovaGlobe</span>
-        </div>
-        <div className="search-wrap">
-          <div className="search">
-            <input
-              placeholder="Explore the world. Show coastal cities with sustainable energy initiatives"
-              aria-label="Search"
-            />
-          </div>
-          <button className="search-btn topbar-search-btn" type="button">Search</button>
-        </div>
-        <div className="top-actions">
-          <button className="icon-btn topbar-hide-btn" type="button" onClick={() => setPanelsVisible(!panelsVisible)}>
-            {panelsVisible ? 'Hide Data' : 'Show Data'}
-          </button>
-          <button className="chip topbar-compare-btn" type="button" onClick={handleCompareClick}>Compare</button>
-        </div>
-        <div className="avatar-wrap">
-          <button
-            className="avatar"
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-          >
-            NG
-          </button>
-          {menuOpen && (
-            <div className="avatar-menu" role="menu">
-              <button className="menu-item" type="button" onClick={goToLogin}>
-                <span className="menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" />
-                  </svg>
-                </span>
-                <span>Sign in / Sign up</span>
-              </button>
-              <div className="menu-divider" />
-              <button className="menu-item" type="button" onClick={goToProfile}>
-                <span className="menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" />
-                  </svg>
-                </span>
-                <span>My profile</span>
-              </button>
-              <button className="menu-item" type="button">
-                <span className="menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5v5.4l3.5 2.1-.8 1.3L11.5 13V7H13z" />
-                  </svg>
-                </span>
-                <span>History</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+      <Navbar
+        panelsVisible={panelsVisible}
+        setPanelsVisible={setPanelsVisible}
+        handleCompareClick={handleCompareClick}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        goToLogin={goToLogin}
+        goToProfile={goToProfile}
+      />
 
       <div className="gridlines" aria-hidden="true" />
 
       <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
-
-        <section className="panel left">
-          <h3>Semantic Search Results</h3>
-          <div className="list">
-            {semanticResults.map((item) => (
-              <div className="list-item" key={item.title}>
-                <div>
-                  <div className="list-title">{item.title}</div>
-                  <div className="list-detail">{item.detail}</div>
-                </div>
-                <div className={`score ${item.tone}`}>{item.score}</div>
-              </div>
-            ))}
-          </div>
-          <div className="panel-footer">
-            <button 
-              className="chip" 
-              type="button" 
-              onClick={() => setTwinSliderVisible(!twinSliderVisible)}
-            >
-              Digital Twin Simulation
-            </button>
-          </div>
-        </section>
-
-        <section className="panel right">
-          <h3>Live Data Feed</h3>
-          <div className="feed">
-            {liveFeed.map((item) => (
-              <div className="feed-row" key={item.label}>
-                <span>{item.label}</span>
-                <span className="value">{item.value}</span>
-              </div>
-            ))}
-          </div>
-          <div className="panel-footer search-footer">
-            <input
-              className="panel-search"
-              placeholder="Search feed"
-              aria-label="Search feed"
-            />
-            <button className="search-btn" type="button">Search</button>
-          </div>
-        </section>
+        <SidePanels
+          semanticResults={semanticResults}
+          twinSliderVisible={twinSliderVisible}
+          setTwinSliderVisible={setTwinSliderVisible}
+          liveFeed={liveFeed}
+        />
 
         <div className={`twin-slider-container ${twinSliderVisible ? '' : 'hidden'}`}>
           <div className="twin-slider-header">
@@ -171,13 +83,13 @@ export default function Home() {
             <button className="twin-slider-close" onClick={() => setTwinSliderVisible(false)} title="Close">&times;</button>
           </div>
           <div className="twin-slider-value">Year {new Date().getFullYear() - 100 + Number(twinSliderValue)}</div>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={twinSliderValue} 
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={twinSliderValue}
             onChange={(e) => setTwinSliderValue(e.target.value)}
-            className="twin-slider-input" 
+            className="twin-slider-input"
           />
           <div className="twin-slider-labels">
             <span>Past (-100 Yrs)</span>
@@ -197,7 +109,7 @@ export default function Home() {
             </div>
             <div className="compare-modal-body">
               <p className="compare-desc">Select two regions to evaluate and compare their environmental variables side-by-side.</p>
-              
+
               <div className="compare-inputs">
                 <datalist id="compare-locations">
                   {SUGGESTED_LOCATIONS.map(loc => <option key={loc} value={loc} />)}
@@ -205,35 +117,35 @@ export default function Home() {
 
                 <div className="input-group">
                   <label>Location A</label>
-                  <input 
-                    type="text" 
-                    list="compare-locations" 
-                    value={place1} 
-                    onChange={(e) => setPlace1(e.target.value)} 
-                    className="compare-select" 
-                    placeholder="Type or select location A..." 
-                    aria-label="Select first location" 
+                  <input
+                    type="text"
+                    list="compare-locations"
+                    value={place1}
+                    onChange={(e) => setPlace1(e.target.value)}
+                    className="compare-select"
+                    placeholder="Type or select location A..."
+                    aria-label="Select first location"
                   />
                 </div>
-                
+
                 <div className="compare-vs">VS</div>
-                
+
                 <div className="input-group">
                   <label>Location B</label>
-                  <input 
-                    type="text" 
-                    list="compare-locations" 
-                    value={place2} 
-                    onChange={(e) => setPlace2(e.target.value)} 
-                    className="compare-select" 
-                    placeholder="Type or select location B..." 
-                    aria-label="Select second location" 
+                  <input
+                    type="text"
+                    list="compare-locations"
+                    value={place2}
+                    onChange={(e) => setPlace2(e.target.value)}
+                    className="compare-select"
+                    placeholder="Type or select location B..."
+                    aria-label="Select second location"
                   />
                 </div>
               </div>
             </div>
             <div className="compare-modal-footer">
-              <button 
+              <button
                 className={`compare-submit-btn ${place1 && place2 && place1 !== place2 ? 'active' : ''}`}
                 onClick={handleStartComparison}
                 disabled={!place1 || !place2 || place1 === place2}

@@ -59,9 +59,12 @@
 }
 
 @keyframes drift {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(-12%, -6%) scale(1);
   }
+
   50% {
     transform: translate(8%, 10%) scale(1.03);
   }
@@ -296,6 +299,7 @@
   height: 18px;
   fill: currentColor;
 }
+
 .menu-divider {
   height: 1px;
   background: rgba(90, 200, 255, 0.3);
@@ -324,8 +328,8 @@
 .center-shell {
   width: 100%;
   height: 100%;
- 
-  
+
+
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -346,7 +350,8 @@
 
 .panel {
   position: absolute;
-  top: 96px; /* below topbar */
+  top: 96px;
+  /* below topbar */
   bottom: 24px;
   width: min(28%, 360px);
   background: #07111c;
@@ -671,8 +676,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .compare-modal {
@@ -691,8 +701,15 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(40px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .compare-modal-header {
@@ -757,7 +774,8 @@
   padding-right: 40px;
 }
 
-.compare-select:focus, .compare-select:hover {
+.compare-select:focus,
+.compare-select:hover {
   border-color: rgba(75, 220, 255, 0.6);
   background: rgba(10, 24, 42, 0.9);
 }
@@ -778,7 +796,8 @@
   font-weight: 700;
   color: var(--ink-dim);
   padding: 0 4px;
-  margin-top: 18px; /* aligns with selectors */
+  margin-top: 18px;
+  /* aligns with selectors */
 }
 
 .compare-modal-footer {
@@ -818,7 +837,116 @@
     flex-direction: column;
     gap: 12px;
   }
+
   .compare-vs {
     margin-top: 0;
   }
+}
+
+/* Map Style Picker */
+/* Map Style Picker */
+.map-controls {
+  position: fixed;
+  top: 104px;
+  /* Below the topbar */
+  right: 32px;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 16px;
+  z-index: 999;
+  pointer-events: auto;
+}
+
+.map-control-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke);
+  color: #7fe7ff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.map-control-btn:hover {
+  border-color: var(--cyan);
+  background: #0d1f31;
+  transform: scale(1.05);
+}
+
+.map-control-btn.active {
+  border-color: var(--cyan);
+  background: rgba(75, 220, 255, 0.15);
+  color: white;
+  box-shadow: 0 0 20px rgba(75, 220, 255, 0.4);
+}
+
+.map-style-menu {
+  display: flex;
+  gap: 8px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--stroke);
+  padding: 6px;
+  border-radius: 16px;
+  animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.style-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 72px;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.style-option:hover {
+  background: rgba(75, 220, 255, 0.08);
+  border-color: rgba(75, 220, 255, 0.2);
+}
+
+.style-option.active {
+  background: rgba(75, 220, 255, 0.15);
+  border-color: var(--cyan);
+}
+
+.style-icon-wrapper {
+  font-size: 24px;
+  filter: drop-shadow(0 0 4px rgba(75, 220, 255, 0.3));
+}
+
+.style-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.style-option.active .style-label {
+  color: var(--cyan);
 }

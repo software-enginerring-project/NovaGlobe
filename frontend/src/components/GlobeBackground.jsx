@@ -2,6 +2,13 @@ import { useEffect, useRef } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 
+const MAP_STYLES = {
+  SATELLITE: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS,
+  AERIAL: Cesium.IonWorldImageryStyle.AERIAL,
+  ROAD: Cesium.IonWorldImageryStyle.ROAD,
+  DARK: Cesium.IonWorldImageryStyle.CANVAS_DARK,
+};
+
 const ZOOM_IMAGERY_PROFILES = {
   global: {
     maxHeight: Number.POSITIVE_INFINITY,
@@ -17,18 +24,62 @@ function getImageryProfile(height) {
   if (height <= ZOOM_IMAGERY_PROFILES.regional.maxHeight) {
     return "regional";
   }
-
   return "global";
 }
 
-export default function GlobeBackground() {
+export default function GlobeBackground({ mapStyle = "AUTO" }) {
   const cesiumContainerRef = useRef(null);
+  const viewerRef = useRef(null);
+  const currentBaseLayerRef = useRef(null);
+  const currentProfileRef = useRef(null);
+  const mapStyleRef = useRef(mapStyle);
+
+  // Sync ref with prop
+  useEffect(() => {
+    mapStyleRef.current = mapStyle;
+  }, [mapStyle]);
+
+  const swapImagery = async (forceStyle = null) => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+
+    let styleToApply;
+    const activeStyle = forceStyle || mapStyleRef.current;
+    
+    if (activeStyle !== "AUTO") {
+      styleToApply = MAP_STYLES[activeStyle];
+    } else {
+      const cameraHeight = viewer.camera.positionCartographic.height;
+      const nextProfile = getImageryProfile(cameraHeight);
+      
+      if (nextProfile === currentProfileRef.current && !forceStyle) {
+        return;
+      }
+      styleToApply = ZOOM_IMAGERY_PROFILES[nextProfile].style;
+      currentProfileRef.current = nextProfile;
+    }
+
+    try {
+      const nextLayer = Cesium.ImageryLayer.fromWorldImagery({
+        style: styleToApply,
+      });
+
+      viewer.imageryLayers.add(nextLayer, 0);
+
+      if (currentBaseLayerRef.current) {
+        viewer.imageryLayers.remove(currentBaseLayerRef.current, true);
+      }
+
+      currentBaseLayerRef.current = nextLayer;
+    } catch (err) {
+      console.error("Imagery swap error:", err);
+    }
+  };
 
   useEffect(() => {
     if (!cesiumContainerRef.current) return;
 
     const token = import.meta.env.VITE_CESIUM_ION_TOKEN;
-
     if (!token) {
       console.error("Missing Cesium Ion token");
       return;
@@ -36,43 +87,15 @@ export default function GlobeBackground() {
 
     Cesium.Ion.defaultAccessToken = token;
 
-    let viewer;
-    let currentBaseLayer;
-    let currentProfile;
     let isDestroyed = false;
     let removeCameraListener;
-
-    const swapImageryForHeight = async () => {
-      if (!viewer || isDestroyed) return;
-
-      const cameraHeight = viewer.camera.positionCartographic.height;
-      const nextProfile = getImageryProfile(cameraHeight);
-
-      if (nextProfile === currentProfile) {
-        return;
-      }
-
-      const nextLayer = Cesium.ImageryLayer.fromWorldImagery({
-        style: ZOOM_IMAGERY_PROFILES[nextProfile].style,
-      });
-
-      viewer.imageryLayers.add(nextLayer, 0);
-
-      if (currentBaseLayer) {
-        viewer.imageryLayers.remove(currentBaseLayer, true);
-      }
-
-      currentBaseLayer = nextLayer;
-      currentProfile = nextProfile;
-    };
 
     const init = async () => {
       try {
         const terrainProvider = await Cesium.createWorldTerrainAsync();
-
         if (isDestroyed) return;
 
-        viewer = new Cesium.Viewer(cesiumContainerRef.current, {
+        const viewer = new Cesium.Viewer(cesiumContainerRef.current, {
           terrainProvider,
           baseLayer: false,
           timeline: false,
@@ -88,14 +111,17 @@ export default function GlobeBackground() {
           scene3DOnly: true,
         });
 
+        viewerRef.current = viewer;
         viewer.scene.globe.enableLighting = true;
         viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
         viewer.camera.percentageChanged = 0.02;
 
-        await swapImageryForHeight();
+        await swapImagery(mapStyleRef.current);
 
         const handleCameraChange = () => {
-          void swapImageryForHeight();
+          if (mapStyleRef.current === "AUTO") {
+            void swapImagery("AUTO");
+          }
         };
 
         viewer.camera.changed.addEventListener(handleCameraChange);
@@ -111,16 +137,19 @@ export default function GlobeBackground() {
 
     return () => {
       isDestroyed = true;
-
-      if (removeCameraListener) {
-        removeCameraListener();
-      }
-
-      if (viewer && !viewer.isDestroyed()) {
-        viewer.destroy();
+      if (removeCameraListener) removeCameraListener();
+      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+        viewerRef.current.destroy();
       }
     };
   }, []);
+
+  // Update imagery when mapStyle prop changes
+  useEffect(() => {
+    if (viewerRef.current) {
+      swapImagery(mapStyle);
+    }
+  }, [mapStyle]);
 
   return (
     <div
