@@ -115,3 +115,17 @@ def profile():
 @main.route("/status")
 def status():
     return jsonify({"status": "ok", "message": "NovaGlobe API is running"})
+
+@main.route("/search", methods=["POST"])
+def search():
+    data = request.get_json()
+    query = data.get("query", "").strip() if data else ""
+
+    if not query:
+        return jsonify({"success": False, "error": "No query provided"}), 400
+
+    from .services.search_service import semantic_search
+    result = semantic_search(query)
+
+    status_code = 200 if result["success"] else 422
+    return jsonify(result), status_code

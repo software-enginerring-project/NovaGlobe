@@ -102,6 +102,33 @@ export default function GlobeBackground() {
         removeCameraListener = () => {
           viewer.camera.changed.removeEventListener(handleCameraChange);
         };
+
+        // Listen for flyTo events dispatched from other components (e.g. search)
+        const handleFlyTo = (e) => {
+          const { lat, lng, height } = e.detail;
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(lng, lat, height || 1500000),
+            duration: 2.5,
+            orientation: {
+              heading: Cesium.Math.toRadians(0),
+              pitch: Cesium.Math.toRadians(-45),
+              roll: 0,
+            },
+          });
+        };
+        window.addEventListener("globe:flyto", handleFlyTo);
+
+        // Store cleanup for flyTo listener
+        const removeFlyToListener = () => {
+          window.removeEventListener("globe:flyto", handleFlyTo);
+        };
+
+        // Augment the cleanup to also remove flyTo listener
+        const origRemoveCameraListener = removeCameraListener;
+        removeCameraListener = () => {
+          origRemoveCameraListener();
+          removeFlyToListener();
+        };
       } catch (err) {
         console.error("Cesium error:", err);
       }

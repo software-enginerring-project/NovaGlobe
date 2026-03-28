@@ -5,3 +5,4 @@ class Config:
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
     JWT_SECRET = os.getenv("JWT_SECRET", "supersecretkey")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")

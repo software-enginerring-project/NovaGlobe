@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../assets/css/front.css';
 
-const semanticResults = [
+const defaultResults = [
   { title: "Pacific Gridstream", detail: "Ocean power simulation", score: "102%", tone: "good", },
   { title: "Amsterdam Net Power", detail: "ES research initiative", score: "83%", tone: "mid", },
   { title: "Freiburg City", detail: "EcoGrid status", score: "68%", tone: "warm", },
@@ -34,6 +35,10 @@ export default function Home() {
   const [place2, setPlace2] = useState('');
   const pulseTimer = useRef(null);
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(defaultResults);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -53,6 +58,49 @@ export default function Home() {
     }
   };
 
+  const handleSearch = async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const res = await axios.post('http://localhost:5000/search', { query });
+      const data = res.data;
+
+      if (data.success && data.location) {
+        const loc = data.location;
+
+        // Update search results panel
+        setSearchResults([{
+          title: loc.display_name,
+          detail: loc.description,
+          score: `${Math.round(loc.confidence * 100)}%`,
+          tone: loc.confidence > 0.8 ? 'good' : loc.confidence > 0.5 ? 'mid' : 'warm',
+        }]);
+
+        // Fly the globe to coordinates
+        window.dispatchEvent(new CustomEvent('globe:flyto', {
+          detail: { lat: loc.lat, lng: loc.lng }
+        }));
+      } else {
+        setSearchError(data.error || 'No location found');
+        setSearchResults(defaultResults);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setSearchError(err.response?.data?.error || 'Search failed. Is the backend running?');
+      setSearchResults(defaultResults);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
   return (
     <div className="shell dashboard">
       <header className="topbar">
@@ -65,9 +113,19 @@ export default function Home() {
             <input
               placeholder="Explore the world. Show coastal cities with sustainable energy initiatives"
               aria-label="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
             />
           </div>
-          <button className="search-btn topbar-search-btn" type="button">Search</button>
+          <button 
+            className="search-btn topbar-search-btn" 
+            type="button" 
+            onClick={handleSearch}
+            disabled={isSearching}
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
         </div>
         <div className="top-actions">
           <button className="icon-btn topbar-hide-btn" type="button" onClick={() => setPanelsVisible(!panelsVisible)}>
@@ -122,9 +180,14 @@ export default function Home() {
       <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
 
         <section className="panel left">
-          <h3>Semantic Search Results</h3>
+          <h3>{searchError ? 'Search Error' : 'Semantic Search Results'}</h3>
+          {searchError && (
+            <div style={{ color: '#ffb58a', fontSize: '12px', padding: '8px 0' }}>
+              {searchError}
+            </div>
+          )}
           <div className="list">
-            {semanticResults.map((item) => (
+            {searchResults.map((item) => (
               <div className="list-item" key={item.title}>
                 <div>
                   <div className="list-title">{item.title}</div>
