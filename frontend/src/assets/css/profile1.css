@@ -34,7 +34,7 @@
   pointer-events: auto;
   background: rgba(6, 15, 28, 0.4);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(75, 220, 255, 0.15);
+  border-bottom: 1px solid rgba(8, 201, 192, 0.15);
 }
 
 .brand {
@@ -83,7 +83,7 @@
   background: rgba(6, 15, 28, 0.45);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(75, 220, 255, 0.15);
+  border: 1px solid rgba(8, 201, 192, 0.15);
   width: min(420px, 92vw);
   border-radius: var(--radius-lg, 24px);
   padding: 28px;

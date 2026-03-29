@@ -129,3 +129,33 @@ def search():
 
     status_code = 200 if result["success"] else 422
     return jsonify(result), status_code
+
+@main.route("/agent/chat", methods=["POST"])
+def agent_chat():
+    data = request.get_json()
+    message = data.get("message", "").strip() if data else ""
+    session_id = data.get("session_id", "anonymous")
+    
+    # Check if user is logged in
+    user_id = None
+    token = request.cookies.get("token")
+    if token:
+        try:
+            from flask import current_app
+            import jwt
+            decoded = jwt.decode(token, current_app.config["JWT_SECRET"], algorithms=["HS256"])
+            user_id = decoded.get("user_id")
+        except:
+            pass
+            
+    from .services.agent_service import process_agent_message
+    result = process_agent_message(user_id, session_id, message)
+    
+    return jsonify(result), 200 if "error" not in result else 500
+
+@main.route("/agent/history", methods=["GET"])
+def agent_history():
+    session_id = request.args.get("session_id", "anonymous")
+    from .services.agent_service import get_chat_history
+    history = get_chat_history(session_id)
+    return jsonify({"history": history}), 200

@@ -1,15 +1,15 @@
 :root {
-  --ink: #d9f2ff;
-  --ink-dim: rgba(217, 242, 255, 0.7);
-  --cyan: #4bdcff;
-  --aqua: #2cc9ff;
-  --teal: #1fe2c4;
+  --ink: #e0fcfb;
+  --ink-dim: rgba(224, 252, 251, 0.7);
+  --cyan: #08c9c0;
+  --aqua: #0aeae0;
+  --teal: #06968f;
   --navy: #0b1c2e;
   --deep: #050a12;
   --glass: rgba(10, 26, 44, 0.6);
   --glass-strong: rgba(10, 26, 44, 0.82);
-  --stroke: rgba(90, 200, 255, 0.22);
-  --glow: 0 0 50px rgba(75, 220, 255, 0.18);
+  --stroke: rgba(8, 201, 192, 0.22);
+  --glow: 0 0 50px rgba(8, 201, 192, 0.18);
   --radius-lg: 28px;
   --radius-md: 18px;
 }
@@ -36,9 +36,9 @@
   width: 620px;
   height: 620px;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, rgba(75, 220, 255, 0.7), rgba(75, 220, 255, 0.05) 65%, transparent 70%);
+  background: radial-gradient(circle at 40% 35%, rgba(8, 201, 192, 0.7), rgba(8, 201, 192, 0.05) 65%, transparent 70%);
   filter: blur(1px);
-  box-shadow: 0 0 90px rgba(75, 220, 255, 0.25);
+  box-shadow: 0 0 90px rgba(8, 201, 192, 0.25);
   animation: drift 18s ease-in-out infinite;
 }
 
@@ -79,7 +79,7 @@
   background: rgba(6, 15, 28, 0.45);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(75, 220, 255, 0.15);
+  border: 1px solid rgba(8, 201, 192, 0.15);
   border-radius: var(--radius-lg);
   box-shadow: 0 30px 90px rgba(3, 10, 22, 0.85), var(--glow);
   display: grid;
@@ -120,7 +120,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   background: transparent;
-  border: 1px solid rgba(90, 200, 255, 0.12);
+  border: 1px solid rgba(8, 201, 192, 0.12);
 }
 
 .feature span {
@@ -131,7 +131,7 @@
 .login {
   background: rgba(10, 26, 44, 0.2);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(90, 200, 255, 0.1);
+  border: 1px solid rgba(8, 201, 192, 0.1);
   padding: 32px;
   display: grid;
   gap: 16px;
@@ -153,7 +153,7 @@ input {
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(90, 200, 255, 0.25);
+  border: 1px solid rgba(8, 201, 192, 0.25);
   background: transparent;
   color: var(--ink);
   outline: none;
@@ -161,8 +161,8 @@ input {
 }
 
 input:focus {
-  border-color: rgba(75, 220, 255, 0.7);
-  box-shadow: 0 0 18px rgba(75, 220, 255, 0.25);
+  border-color: rgba(8, 201, 192, 0.7);
+  box-shadow: 0 0 18px rgba(8, 201, 192, 0.25);
 }
 
 .row {
@@ -202,13 +202,13 @@ button:hover {
   justify-content: center;
   gap: 10px;
   background: transparent;
-  border: 1px solid rgba(90, 200, 255, 0.3);
+  border: 1px solid rgba(8, 201, 192, 0.3);
   color: var(--ink);
   box-shadow: none;
 }
 
 .google-btn:hover {
-  box-shadow: 0 12px 30px rgba(75, 220, 255, 0.18);
+  box-shadow: 0 12px 30px rgba(8, 201, 192, 0.18);
 }
 
 .google-icon {
@@ -250,7 +250,7 @@ button:hover {
 
 .footer {
   font-size: 12px;
-  color: rgba(217, 242, 255, 0.55);
+  color: rgba(224, 252, 251, 0.55);
 }
 
 .footer-row {
@@ -275,7 +275,7 @@ button:hover {
   padding: 6px 10px;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid rgba(90, 200, 255, 0.2);
+  border: 1px solid rgba(8, 201, 192, 0.2);
   font-size: 12px;
   color: var(--ink-dim);
 }
