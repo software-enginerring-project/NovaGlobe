@@ -2,22 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/css/front.css';
-import Navbar from '../components/Navbar';
-import SidePanels from '../components/SidePanels';
 import AgentChat from '../components/AgentChat';
 
 const defaultResults = [
   { title: "Pacific Gridstream", detail: "Ocean power simulation", score: "102%", tone: "good", },
   { title: "Amsterdam Net Power", detail: "ES research initiative", score: "83%", tone: "mid", },
   { title: "Freiburg City", detail: "EcoGrid status", score: "68%", tone: "warm", },
-];
-
-const liveFeed = [
-  { label: "GeoSense API", value: "+30.2 C" },
-  { label: "OceanNet API", value: "+28.9 C" },
-  { label: "GreenOrbit API", value: "57%" },
-  { label: "WaterFlow API", value: "1.29k" },
-  { label: "EcoPulse API", value: "99" },
 ];
 
 const SUGGESTED_LOCATIONS = [
@@ -34,7 +24,6 @@ export default function Home() {
   const [twinSliderVisible, setTwinSliderVisible] = useState(false);
   const [twinSliderValue, setTwinSliderValue] = useState(100);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
-  const [rightPanelVisible, setRightPanelVisible] = useState(false);
   const [place1, setPlace1] = useState('');
   const [place2, setPlace2] = useState('');
   const pulseTimer = useRef(null);
@@ -68,7 +57,6 @@ export default function Home() {
 
     setIsSearching(true);
     setSearchError(null);
-    setRightPanelVisible(true);
     window.dispatchEvent(new CustomEvent('agent:close'));
 
     try {
@@ -109,15 +97,6 @@ export default function Home() {
 
   return (
     <div className="shell dashboard">
-      <Navbar
-        panelsVisible={panelsVisible}
-        setPanelsVisible={setPanelsVisible}
-        handleCompareClick={handleCompareClick}
-        menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
-        goToLogin={goToLogin}
-        goToProfile={goToProfile}
-      />
       <header className="topbar">
         <div className="brandmark">
           <div className="spark" aria-hidden="true"></div>
@@ -193,13 +172,6 @@ export default function Home() {
       <div className="gridlines" aria-hidden="true" />
 
       <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
-        <SidePanels
-          semanticResults={semanticResults}
-          twinSliderVisible={twinSliderVisible}
-          setTwinSliderVisible={setTwinSliderVisible}
-          liveFeed={liveFeed}
-        />
-
         <section className="panel left">
           <h3>{searchError ? 'Search Error' : 'Semantic Search Results'}</h3>
           {searchError && (
@@ -228,32 +200,6 @@ export default function Home() {
             </button>
           </div>
         </section>
-
-        {rightPanelVisible && (
-          <section className="panel right">
-            <h3>Location Summary</h3>
-            {searchResults.length > 0 && (
-              <div className="feed">
-                <div className="feed-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-                  <span style={{ fontSize: '15px', color: 'var(--cyan)', fontWeight: 600 }}>{searchResults[0].title}</span>
-                  <span style={{ fontSize: '13px', lineHeight: 1.5 }}>{searchResults[0].detail}</span>
-                </div>
-                <div className="feed-row">
-                  <span>Match Status</span>
-                  <span className={`score ${searchResults[0].tone}`}>{searchResults[0].score}</span>
-                </div>
-              </div>
-            )}
-            <div className="panel-footer search-footer" style={{ marginTop: 'auto' }}>
-              <input
-                className="panel-search"
-                placeholder="Search location details..."
-                aria-label="Search location parameter"
-              />
-              <button className="search-btn" type="button">Filter</button>
-            </div>
-          </section>
-        )}
 
         <div className={`twin-slider-container ${twinSliderVisible ? '' : 'hidden'}`}>
           <div className="twin-slider-header">

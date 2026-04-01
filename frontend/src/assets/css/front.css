@@ -777,6 +777,7 @@
 .compare-select:focus,
 .compare-select:hover {
   border-color: rgba(75, 220, 255, 0.6);
+}
 .compare-select:focus, .compare-select:hover {
   border-color: rgba(8, 201, 192, 0.6);
   background: rgba(10, 24, 42, 0.9);
