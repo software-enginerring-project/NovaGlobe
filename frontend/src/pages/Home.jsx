@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/css/front.css';
+import Navbar from '../components/Navbar';
+import SidePanels from '../components/SidePanels';
 import AgentChat from '../components/AgentChat';
 
 const defaultResults = [
@@ -107,6 +109,15 @@ export default function Home() {
 
   return (
     <div className="shell dashboard">
+      <Navbar
+        panelsVisible={panelsVisible}
+        setPanelsVisible={setPanelsVisible}
+        handleCompareClick={handleCompareClick}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        goToLogin={goToLogin}
+        goToProfile={goToProfile}
+      />
       <header className="topbar">
         <div className="brandmark">
           <div className="spark" aria-hidden="true"></div>
@@ -182,6 +193,12 @@ export default function Home() {
       <div className="gridlines" aria-hidden="true" />
 
       <main className={`layout ${panelsVisible ? "panels-on" : "panels-off"}`}>
+        <SidePanels
+          semanticResults={semanticResults}
+          twinSliderVisible={twinSliderVisible}
+          setTwinSliderVisible={setTwinSliderVisible}
+          liveFeed={liveFeed}
+        />
 
         <section className="panel left">
           <h3>{searchError ? 'Search Error' : 'Semantic Search Results'}</h3>
@@ -244,13 +261,13 @@ export default function Home() {
             <button className="twin-slider-close" onClick={() => setTwinSliderVisible(false)} title="Close">&times;</button>
           </div>
           <div className="twin-slider-value">Year {new Date().getFullYear() - 100 + Number(twinSliderValue)}</div>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={twinSliderValue} 
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={twinSliderValue}
             onChange={(e) => setTwinSliderValue(e.target.value)}
-            className="twin-slider-input" 
+            className="twin-slider-input"
           />
           <div className="twin-slider-labels">
             <span>Past (-100 Yrs)</span>
@@ -270,7 +287,7 @@ export default function Home() {
             </div>
             <div className="compare-modal-body">
               <p className="compare-desc">Select two regions to evaluate and compare their environmental variables side-by-side.</p>
-              
+
               <div className="compare-inputs">
                 <datalist id="compare-locations">
                   {SUGGESTED_LOCATIONS.map(loc => <option key={loc} value={loc} />)}
@@ -278,35 +295,35 @@ export default function Home() {
 
                 <div className="input-group">
                   <label>Location A</label>
-                  <input 
-                    type="text" 
-                    list="compare-locations" 
-                    value={place1} 
-                    onChange={(e) => setPlace1(e.target.value)} 
-                    className="compare-select" 
-                    placeholder="Type or select location A..." 
-                    aria-label="Select first location" 
+                  <input
+                    type="text"
+                    list="compare-locations"
+                    value={place1}
+                    onChange={(e) => setPlace1(e.target.value)}
+                    className="compare-select"
+                    placeholder="Type or select location A..."
+                    aria-label="Select first location"
                   />
                 </div>
-                
+
                 <div className="compare-vs">VS</div>
-                
+
                 <div className="input-group">
                   <label>Location B</label>
-                  <input 
-                    type="text" 
-                    list="compare-locations" 
-                    value={place2} 
-                    onChange={(e) => setPlace2(e.target.value)} 
-                    className="compare-select" 
-                    placeholder="Type or select location B..." 
-                    aria-label="Select second location" 
+                  <input
+                    type="text"
+                    list="compare-locations"
+                    value={place2}
+                    onChange={(e) => setPlace2(e.target.value)}
+                    className="compare-select"
+                    placeholder="Type or select location B..."
+                    aria-label="Select second location"
                   />
                 </div>
               </div>
             </div>
             <div className="compare-modal-footer">
-              <button 
+              <button
                 className={`compare-submit-btn ${place1 && place2 && place1 !== place2 ? 'active' : ''}`}
                 onClick={handleStartComparison}
                 disabled={!place1 || !place2 || place1 === place2}
