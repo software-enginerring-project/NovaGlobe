@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime, timezone
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
@@ -9,10 +8,16 @@ from app.models import db, ChatMessage
 
 def _get_llm():
     """Create a Groq-backed Llama 3 instance for the agent."""
+    from langchain_groq import ChatGroq
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing GROQ_API_KEY for Nova Guide")
+
     return ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.7,
-        api_key=os.getenv("GROQ_API_KEY"),
+        api_key=api_key,
     )
 
 AGENT_PROMPT = ChatPromptTemplate.from_messages([
@@ -97,7 +102,28 @@ def process_agent_message(user_id, session_id, message):
     except Exception as e:
         db.session.rollback()
         print(f"Agent error: {e}")
-        return {"error": str(e)}
+        fallback_reply = (
+            "I am having a temporary connection issue, but I am still here. "
+            "Please try again in a moment."
+        )
+
+        try:
+            agent_msg = ChatMessage(
+                user_id=user_id,
+                session_id=session_id,
+                role="agent",
+                content=fallback_reply
+            )
+            db.session.add(agent_msg)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return {
+            "reply": fallback_reply,
+            "action": None,
+            "fallback": True
+        }
 
 def get_chat_history(session_id):
     records = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.timestamp.asc()).all()

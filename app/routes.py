@@ -150,8 +150,8 @@ def agent_chat():
             
     from .services.agent_service import process_agent_message
     result = process_agent_message(user_id, session_id, message)
-    
-    return jsonify(result), 200 if "error" not in result else 500
+
+    return jsonify(result), 200
 
 @main.route("/agent/history", methods=["GET"])
 def agent_history():
