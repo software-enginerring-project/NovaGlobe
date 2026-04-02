@@ -83,8 +83,11 @@ export default function Home() {
   const [twinSliderValue, setTwinSliderValue] = useState(100);
   const [appliedSliderValue, setAppliedSliderValue] = useState(null);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
+  const [panelsVisible, setPanelsVisible] = useState(true);
   const [place1, setPlace1] = useState('');
   const [place2, setPlace2] = useState('');
+  const pulseTimer = useRef(null);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(defaultResults);
   const [isSearching, setIsSearching] = useState(false);
@@ -108,7 +111,6 @@ export default function Home() {
   const [compareResult, setCompareResult] = useState(null);
   const [playback, setPlayback] = useState([]);
 
-  const pulseTimer = useRef(null);
   const simulationTimer = useRef(null);
   const seededAssetsRef = useRef(new Set());
   const bootstrapDoneRef = useRef(false);
@@ -383,6 +385,16 @@ export default function Home() {
             detail: { lat: loc.lat, lng: loc.lng },
           })
         );
+        setSearchResults([{
+          title: loc.display_name,
+          detail: loc.description,
+          score: `${Math.round(loc.confidence * 100)}%`,
+          tone: loc.confidence > 0.8 ? 'good' : loc.confidence > 0.5 ? 'mid' : 'warm',
+        }]);
+
+        window.dispatchEvent(new CustomEvent('globe:flyto', {
+          detail: { lat: loc.lat, lng: loc.lng }
+        }));
       } else {
         setSearchError(data.error || 'No location found');
         setSearchResults(defaultResults);
@@ -410,221 +422,107 @@ export default function Home() {
 
   return (
     <div className="shell dashboard">
-      <header className="topbar">
-        <div className="brandmark">
-          <div className="spark" aria-hidden="true"></div>
-          <span>NovaGlobe</span>
-        </div>
-        <div className="search-wrap">
-          <div className="search">
-            <input
-              placeholder="Explore the world. Show coastal cities with sustainable energy initiatives"
-              aria-label="Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-            />
-          </div>
-          <button
-            className="search-btn topbar-search-btn"
-            type="button"
-            onClick={handleSearch}
-            disabled={isSearching}
-          >
-            {isSearching ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-        <div className="top-actions">
-          <button className="icon-btn topbar-hide-btn" type="button" onClick={() => setPanelsVisible(!panelsVisible)}>
-            {panelsVisible ? 'Hide Data' : 'Show Data'}
-          </button>
-          <button className="chip topbar-compare-btn" type="button" onClick={handleCompareClick}>Compare</button>
-        </div>
-        <div className="avatar-wrap">
-          <button
-            className="avatar"
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-          >
-            NG
-          </button>
-          {menuOpen && (
-            <div className="avatar-menu" role="menu">
-              <button className="menu-item" type="button" onClick={goToLogin}>
-                <span className="menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" />
-                  </svg>
-                </span>
-                <span>Sign in / Sign up</span>
-              </button>
-              <div className="menu-divider" />
-              <button className="menu-item" type="button" onClick={goToProfile}>
-                <span className="menu-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" />
-                  </svg>
-                </span>
-                <span>My profile</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+
+      <Navbar 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+        isSearching={isSearching}
+        handleSearchKeyDown={handleSearchKeyDown}
+        twinSliderVisible={twinSliderVisible}
+        setTwinSliderVisible={setTwinSliderVisible}
+        handleCompareClick={handleCompareClick}
+      />
 
       <div className="gridlines" aria-hidden="true" />
 
       <main className={`layout ${panelsVisible ? 'panels-on' : 'panels-off'}`}>
-        <section className="panel left">
-          <h3>{searchError ? 'Search Error' : 'Semantic Search Results'}</h3>
-          {searchError && <div className="inline-error">{searchError}</div>}
-          <div className="list">
-            {searchResults.map((item) => (
-              <div className="list-item" key={item.title}>
-                <div>
-                  <div className="list-title">{item.title}</div>
-                  <div className="list-detail">{item.detail}</div>
-                </div>
-                <div className={`score ${item.tone}`}>{item.score}</div>
-              </div>
-            ))}
-          </div>
-          <div className="panel-footer">
-            <button className="chip" type="button" onClick={openTwinPanel}>
-              {twinSliderVisible ? 'Close Digital Twin' : 'Digital Twin Simulation'}
-            </button>
-          </div>
-        </section>
+
 
         {twinSliderVisible && (
-          <section className="panel right">
-            <h3>Live Twin Operations</h3>
-            {twinError && <div className="inline-error">{twinError}</div>}
-            <div className="feed">
-              <div className="feed-row"><span>Site</span><span className="value">{selectedSiteId || '--'}</span></div>
-              <div className="feed-row"><span>Asset</span><span className="value">{selectedAsset?.name || '--'}</span></div>
-              <div className="feed-row"><span>Sync State</span><span className="value">{twinSyncing ? 'Updating' : 'Stable'}</span></div>
-              <div className="feed-row"><span>Open Alerts</span><span className="value">{alerts.length}</span></div>
-              <div className="feed-row"><span>Avg Efficiency</span><span className="value">{siteKpis?.avg_efficiency ?? '--'}</span></div>
-              <div className="feed-row"><span>Maint. Risk</span><span className="value">{maintenance ? `${Math.round((maintenance.risk_probability || 0) * 100)}%` : '--'}</span></div>
-              <div className="feed-row"><span>Forecast Power</span><span className="value">{forecast ? `${forecast.predicted_value} kW` : '--'}</span></div>
-              <div className="feed-row"><span>Timeline Applied</span><span className="value">{appliedSliderValue === null ? '--' : `${appliedSliderValue}%`}</span></div>
+          <section className="pointer-events-auto fixed -translate-y-1/2 w-[320px] max-h-[50vh] overflow-y-auto 
+          bg-[#030b14]/85 backdrop-blur-3xl border border-cyan/20 rounded-[1.5rem] 
+          shadow-[0_0_0_1px_rgba(8,201,192,0.1),0_20px_50px_rgba(0,0,0,0.8),0_0_20px_rgba(8,201,192,0.1)] 
+          p-5 flex flex-col gap-4 text-sm text-ink/80 transition-all duration-500 z-[90] 
+          [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          style={{ right: '12px', top: '50%' }}>
+            
+            <div className="flex items-center gap-3 border-b border-cyan/10 pb-3 mt-1">
+              <div className="w-8 h-8 rounded-full bg-cyan/10 border border-cyan/30 flex items-center justify-center shadow-[0_0_10px_rgba(8,201,192,0.2)]">
+                <svg className="w-4 h-4 text-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="uppercase tracking-[0.15em] font-bold text-cyan text-xs m-0">Live Twin Ops</h3>
             </div>
 
-            <div className="mini-card">
-              <div className="mini-card-title">Latest Simulation</div>
-              <div className="mini-card-body">
-                <div>Mode: <strong>{simulationResult?.mode || '--'}</strong></div>
-                <div>Throughput: <strong>{simulationResult?.result?.throughput ?? '--'}</strong></div>
-                <div>Power: <strong>{simulationResult?.result?.power_kw ?? '--'}</strong></div>
-                <div>Latency: <strong>{simulationResult?.result?.latency_ms ?? '--'} ms</strong></div>
+            {twinError && <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl shadow-[inset_0_0_10px_rgba(239,68,68,0.1)]">{twinError}</div>}
+            
+            <div className="flex flex-col gap-2">
+              {[
+                { label: 'Site ID', value: selectedSiteId || '--' },
+                { label: 'Asset Name', value: selectedAsset?.name || '--' },
+                { label: 'Sync State', value: twinSyncing ? 'Updating...' : 'Stable', hl: twinSyncing },
+                { label: 'Open Alerts', value: alerts.length, hl: alerts.length > 0 },
+                { label: 'Avg Efficiency', value: siteKpis?.avg_efficiency ?? '--' },
+                { label: 'Maint. Risk', value: maintenance ? `${Math.round((maintenance.risk_probability || 0) * 100)}%` : '--' },
+                { label: 'Forecast', value: forecast ? `${forecast.predicted_value} kW` : '--' },
+                { label: 'Timeline', value: appliedSliderValue === null ? '--' : `${appliedSliderValue}%`, hl: true }
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between items-center px-3 py-2 bg-white/5 rounded-xl border border-white/5 hover:bg-cyan/5 transition-colors">
+                  <span className="text-[10px] text-ink/50 uppercase tracking-[0.15em] font-medium">{item.label}</span>
+                  <span className={`text-[11px] font-bold tracking-wide ${item.hl ? 'text-cyan drop-shadow-[0_0_8px_rgba(8,201,192,0.6)]' : 'text-ink/90'}`}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-[#02060d]/60 border border-cyan/10 rounded-xl p-4 flex flex-col gap-3 mt-1 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+              <span className="text-[10px] text-cyan/70 uppercase tracking-[0.2em] font-bold">Latest Simulation</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col bg-white/5 p-2 rounded-xl border border-white/5">
+                  <span className="text-[9px] text-ink/40 tracking-wider mb-0.5">MODE</span>
+                  <span className="font-semibold text-xs text-ink/90">{simulationResult?.mode || '--'}</span>
+                </div>
+                <div className="flex flex-col bg-white/5 p-2 rounded-xl border border-white/5">
+                  <span className="text-[9px] text-ink/40 tracking-wider mb-0.5">THROUGHPUT</span>
+                  <span className="font-semibold text-xs text-ink/90">{simulationResult?.result?.throughput ?? '--'}</span>
+                </div>
+                <div className="flex flex-col bg-white/5 p-2 rounded-xl border border-white/5">
+                  <span className="text-[9px] text-ink/40 tracking-wider mb-0.5">POWER</span>
+                  <span className="font-semibold text-xs text-ink/90">{simulationResult?.result?.power_kw ?? '--'}</span>
+                </div>
+                <div className="flex flex-col bg-white/5 p-2 rounded-xl border border-white/5">
+                  <span className="text-[9px] text-ink/40 tracking-wider mb-0.5">LATENCY</span>
+                  <span className="font-semibold text-xs text-ink/90">{simulationResult?.result?.latency_ms ? `${simulationResult.result.latency_ms} ms` : '--'}</span>
+                </div>
               </div>
             </div>
 
-            <div className="mini-card">
-              <div className="mini-card-title">Recent Alerts</div>
-              <div className="mini-alerts">
-                {alerts.slice(0, 4).map((alert) => (
-                  <div className="mini-alert-row" key={alert.id}>
-                    <span>{alert.metric}</span>
-                    <span className="value">{alert.observed_value}</span>
+            <div className="flex flex-col gap-2 mt-1 mb-2">
+              <span className="text-[10px] text-cyan/70 uppercase tracking-[0.2em] font-bold px-1">Recent Alerts</span>
+              {alerts.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-ink/30 italic bg-white/5 rounded-xl border border-white/5">All systems nominal.</div>
+              ) : (
+                alerts.slice(0, 4).map((alert) => (
+                  <div key={alert.id} className="flex justify-between items-center px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl shadow-[inset_0_0_8px_rgba(239,68,68,0.1)]">
+                    <span className="text-[10px] text-red-300/80 uppercase tracking-wider font-medium">{alert.metric}</span>
+                    <span className="text-[11px] font-bold text-red-400 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">{alert.observed_value}</span>
                   </div>
-                ))}
-                {!alerts.length && <div className="list-detail">No active alerts.</div>}
-              </div>
+                ))
+              )}
             </div>
           </section>
         )}
 
-        <div className={`twin-slider-container ${twinSliderVisible ? '' : 'hidden'}`}>
-          <div className="twin-slider-header">
-            <span className="twin-slider-title">Simulation Timeline</span>
-            <button className="twin-slider-close" onClick={() => setTwinSliderVisible(false)} title="Close">&times;</button>
-          </div>
-          <div className="twin-slider-value">Year {new Date().getFullYear() - 100 + Number(twinSliderValue)}</div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={twinSliderValue}
-            onChange={(e) => setTwinSliderValue(e.target.value)}
-            className="twin-slider-input"
-          />
-          <div className="twin-slider-labels">
-            <span>Past (-100 Yrs)</span>
-            <span>Present</span>
-          </div>
-          <div className="timeline-status">
-            {twinLoading ? 'Initializing twin context...' : twinSyncing ? 'Applying simulation...' : 'Move slider to rerun simulation and refresh KPIs.'}
-          </div>
-          <div className="timeline-kpis">
-            <div className="kpi-pill">Playback pts: {playback.length}</div>
-            <div className="kpi-pill">Telemetry: {telemetry.length}</div>
-            <div className="kpi-pill">Optimize tips: {optimization.length}</div>
-          </div>
-        </div>
+        <TwinSlider 
+          visible={twinSliderVisible} 
+          setVisible={setTwinSliderVisible} 
+          value={twinSliderValue} 
+          setValue={setTwinSliderValue} 
+        />
       </main>
 
-      {compareModalVisible && (
-        <div className="compare-modal-overlay">
-          <div className="compare-modal">
-            <div className="compare-modal-header">
-              <h3>Compare Scenarios</h3>
-              <button className="twin-slider-close" onClick={() => setCompareModalVisible(false)} title="Close">&times;</button>
-            </div>
-            <div className="compare-modal-body">
-              <p className="compare-desc">
-                Select two strategy labels. We map them to control parameters and run scenario comparison on the active twin asset.
-              </p>
 
-              <div className="compare-inputs">
-                <datalist id="compare-locations">
-                  {SUGGESTED_LOCATIONS.map((loc) => <option key={loc} value={loc} />)}
-                </datalist>
-
-                <div className="input-group">
-                  <label>Scenario A</label>
-                  <input
-                    type="text"
-                    list="compare-locations"
-                    value={place1}
-                    onChange={(e) => setPlace1(e.target.value)}
-                    className="compare-select"
-                    placeholder="Type or select scenario A..."
-                    aria-label="Select first scenario"
-                  />
-                </div>
-
-                <div className="compare-vs">VS</div>
-
-                <div className="input-group">
-                  <label>Scenario B</label>
-                  <input
-                    type="text"
-                    list="compare-locations"
-                    value={place2}
-                    onChange={(e) => setPlace2(e.target.value)}
-                    className="compare-select"
-                    placeholder="Type or select scenario B..."
-                    aria-label="Select second scenario"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="compare-modal-footer">
-              <button
-                className={`compare-submit-btn ${place1 && place2 && place1 !== place2 ? 'active' : ''}`}
-                onClick={handleStartComparison}
-                disabled={!place1 || !place2 || place1 === place2}
-              >
-                {place1 === place2 && place1 !== '' ? 'Select Distinct Scenarios' : 'Run Comparison'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {compareResult && (
         <div className="compare-result-toast">
@@ -635,6 +533,17 @@ export default function Home() {
         </div>
       )}
 
+      <CompareModal 
+        visible={compareModalVisible} 
+        setVisible={setCompareModalVisible}
+        SUGGESTED_LOCATIONS={SUGGESTED_LOCATIONS}
+        place1={place1}
+        setPlace1={setPlace1}
+        place2={place2}
+        setPlace2={setPlace2}
+        handleStartComparison={handleStartComparison}
+      />
+      
       <AgentChat />
     </div>
   );
