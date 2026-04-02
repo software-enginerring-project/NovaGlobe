@@ -20,8 +20,4 @@ def create_app():
     from .routes import main
     app.register_blueprint(main)
 
-    # Ensure core tables exist in local/dev runs even before migrations are applied.
-    with app.app_context():
-        db.create_all()
-
     return app

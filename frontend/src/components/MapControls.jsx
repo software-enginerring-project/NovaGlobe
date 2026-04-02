@@ -7,7 +7,7 @@ const MapControls = ({ currentStyle, onStyleChange }) => {
     { id: 'AUTO', label: 'Auto', icon: '🌐' },
     { id: 'SATELLITE', label: 'Satellite', icon: '🛰️' },
     { id: 'ROAD', label: 'Street', icon: '🛣️' },
-    { id: 'DARK', label: 'Dark', icon: '🌑' },
+    { id: 'AERIAL', label: 'Aerial', icon: '🗺️' },
   ];
 
   return (

@@ -7,7 +7,6 @@ const MAP_STYLES = {
   SATELLITE: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS,
   AERIAL: Cesium.IonWorldImageryStyle.AERIAL,
   ROAD: Cesium.IonWorldImageryStyle.ROAD,
-  DARK: Cesium.IonWorldImageryStyle.CANVAS_DARK,
 };
 
 const DAY_NIGHT_TIME_MULTIPLIER = 120;
@@ -42,16 +41,6 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
     layer.dayAlpha = 1.0;
     layer.nightAlpha = 0.35;
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#0f2233");
-
-    if (resolvedStyle === "DARK") {
-      layer.brightness = 0.38;
-      layer.contrast = 1.35;
-      layer.saturation = 0.08;
-      layer.gamma = 0.95;
-      layer.nightAlpha = 0.7;
-      viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#05090f");
-      return;
-    }
 
     if (resolvedStyle === "ROAD") {
       layer.brightness = 1.1;
@@ -277,7 +266,7 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
 
     if (hasIonTokenRef.current) {
       preloadTimerRef.current = setTimeout(() => {
-        const stylesToPreload = ["AERIAL", "ROAD", "DARK"];
+        const stylesToPreload = ["AERIAL", "ROAD", "SATELLITE"];
         stylesToPreload.forEach((styleKey) => {
           void getOrCreateIonLayer(styleKey);
         });
