@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 
@@ -15,6 +15,9 @@ const DAY_NIGHT_TIME_MULTIPLIER = 120;
 export default function GlobeBackground({ mapStyle = "AUTO" }) {
   const containerRef = useRef(null);
   const viewerRef = useRef(null);
+  const pinBuilderRef = useRef(null);
+  const [popupData, setPopupData] = useState(null);
+  const popupRef = useRef(null);
   const baseLayerRef = useRef(null);
   const layerCacheRef = useRef(new Map());
   const layerLoadPromisesRef = useRef(new Map());
@@ -221,23 +224,52 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
 
     viewer.camera.percentageChanged = 0.05;
 
+    if (!pinBuilderRef.current) {
+      pinBuilderRef.current = new Cesium.PinBuilder();
+    }
+
     flyToHandlerRef.current = (event) => {
       const viewerInstance = viewerRef.current;
       if (!viewerInstance || viewerInstance.isDestroyed()) return;
 
-      const { lat, lng, height } = event.detail || {};
+      const { lat, lng, height, focusName, focusInfo } = event.detail || {};
       if (typeof lat !== "number" || typeof lng !== "number") return;
+      
+      const destinationPos = Cesium.Cartesian3.fromDegrees(lng, lat, height || 6000);
 
       viewerInstance.camera.cancelFlight();
       viewerInstance.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(lng, lat, height || 1_500_000),
-        duration: 1.5,
+        destination: destinationPos,
+        duration: 2.0,
         orientation: {
           heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-45),
+          pitch: Cesium.Math.toRadians(-35),
           roll: 0,
         },
       });
+
+      // Clear existing pins
+      viewerInstance.entities.removeAll();
+
+      if (focusName) {
+        const pinImage = pinBuilderRef.current.fromColor(Cesium.Color.fromCssColorString('#0dcaf0'), 48).toDataURL();
+        viewerInstance.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(lng, lat),
+          billboard: {
+            image: pinImage,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, 0),
+          }
+        });
+
+        setPopupData({
+          title: focusName,
+          info: focusInfo || "A beautiful destination to explore.",
+          position: Cesium.Cartesian3.fromDegrees(lng, lat)
+        });
+      } else {
+        setPopupData(null);
+      }
     };
 
     window.addEventListener("globe:flyto", flyToHandlerRef.current);
@@ -277,14 +309,91 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
     void applyBaseLayer(mapStyle);
   }, [mapStyle]);
 
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed() || !popupData) return;
+
+    const preRenderListener = () => {
+      if (!popupRef.current) return;
+      // Fixed deprecated function name to current Cesium API
+      const canvasPos = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, popupData.position);
+      if (canvasPos) {
+        popupRef.current.style.display = 'block';
+        popupRef.current.style.transform = `translate(${canvasPos.x}px, ${canvasPos.y}px)`;
+      } else {
+        popupRef.current.style.display = 'none';
+      }
+    };
+
+    viewer.scene.preRender.addEventListener(preRenderListener);
+    return () => {
+      viewer.scene.preRender.removeEventListener(preRenderListener);
+    };
+  }, [popupData]);
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 0,
-      }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+        }}
+      />
+
+      {popupData && (
+        <div 
+          ref={popupRef}
+          style={{
+            position: 'absolute',
+            top: 0, left: 0,
+            zIndex: 10,
+            pointerEvents: 'none',
+            transform: 'translate(-9999px, -9999px)',
+            transformOrigin: 'bottom center',
+            marginTop: '-65px', 
+            marginLeft: '-150px', 
+            width: '300px',
+            padding: '16px',
+            borderRadius: '16px',
+            background: 'rgba(15, 34, 51, 0.85)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(13, 202, 240, 0.4)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(13, 202, 240, 0.2)',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif",
+            transition: 'opacity 0.3s ease'
+          }}
+        >
+          <div style={{
+             display: 'flex', 
+             alignItems: 'center',
+             gap: '10px',
+             marginBottom: '10px',
+             borderBottom: '1px solid rgba(255,255,255,0.1)',
+             paddingBottom: '10px'
+          }}>
+            <span style={{ fontSize: '1.4rem' }}>📍</span>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0dcaf0', fontWeight: 600, lineHeight: 1.2 }}>
+              {popupData.title}
+            </h3>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.5, color: '#e0e0e0' }}>
+            {popupData.info}
+          </p>
+          
+          <div style={{
+             position: 'absolute',
+             bottom: '-12px',
+             left: '50%',
+             transform: 'translateX(-50%)',
+             borderLeft: '12px solid transparent',
+             borderRight: '12px solid transparent',
+             borderTop: '12px solid rgba(15, 34, 51, 0.85)',
+          }} />
+        </div>
+      )}
+    </>
   );
 }

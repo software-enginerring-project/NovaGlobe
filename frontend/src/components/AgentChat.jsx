@@ -68,7 +68,12 @@ export default function AgentChat() {
 
       if (data.action && data.action.lat !== undefined && data.action.lng !== undefined) {
         window.dispatchEvent(new CustomEvent('globe:flyto', {
-          detail: { lat: data.action.lat, lng: data.action.lng }
+          detail: { 
+            lat: data.action.lat, 
+            lng: data.action.lng,
+            focusName: data.action.focusName,
+            focusInfo: data.action.focusInfo
+          }
         }));
       }
     } catch (err) {

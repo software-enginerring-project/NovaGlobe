@@ -31,7 +31,8 @@ Otherwise, if the conversation is general and doesn't warrant flying the globe, 
 Reply with ONLY valid JSON (no markdown fences, just the raw JSON object), using this exact schema:
 {{
   "reply": "<your conversational text response to the user>",
-  "location_name": "<canonical place name suitable for geocoding, or null>"
+  "location_name": "<canonical place name suitable for geocoding, or null>",
+  "location_info": "<2-3 engaging sentences describing the history, significance, or cool facts about the location, or null>"
 }}
 
 Rules for reply:
@@ -83,6 +84,7 @@ def process_agent_message(user_id, session_id, message):
         
         reply_text = parsed.get("reply", "I am not sure how to respond to that.")
         location_name = parsed.get("location_name")
+        location_info = parsed.get("location_info")
         
         # Save agent message
         agent_msg = ChatMessage(user_id=user_id, session_id=session_id, role="agent", content=reply_text)
@@ -93,7 +95,7 @@ def process_agent_message(user_id, session_id, message):
         if location_name:
             geo = _geocode(location_name)
             if geo:
-                action = {**geo, "focusName": location_name}
+                action = {**geo, "focusName": location_name, "focusInfo": location_info}
 
         return {
             "reply": reply_text,
