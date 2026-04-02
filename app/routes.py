@@ -209,6 +209,12 @@ def agent_chat():
     from .services.agent_service import process_agent_message
 
     result = process_agent_message(user_id, session_id, message)
+    if "error" in result:
+        return jsonify(result), 400
+
+    if result.get("fallback"):
+        return jsonify(result), 500
+    
     return jsonify(result), 200
 
 

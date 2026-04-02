@@ -64,6 +64,7 @@ def process_agent_message(user_id, session_id, message):
     # Save user message
     user_msg = ChatMessage(user_id=user_id, session_id=session_id, role="user", content=message)
     db.session.add(user_msg)
+    db.session.commit()
     
     # Retrieve history
     history_records = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.timestamp.asc()).all()
