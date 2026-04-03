@@ -372,19 +372,6 @@ export default function Home() {
 
       if (data.success && data.location) {
         const loc = data.location;
-        setSearchResults([
-          {
-            title: loc.display_name,
-            detail: loc.description,
-            score: `${Math.round(loc.confidence * 100)}%`,
-            tone: toneFor(loc.confidence),
-          },
-        ]);
-        window.dispatchEvent(
-          new CustomEvent('globe:flyto', {
-            detail: { lat: loc.lat, lng: loc.lng },
-          })
-        );
         setSearchResults([{
           title: loc.display_name,
           detail: loc.description,
@@ -392,8 +379,14 @@ export default function Home() {
           tone: loc.confidence > 0.8 ? 'good' : loc.confidence > 0.5 ? 'mid' : 'warm',
         }]);
 
+        // Single dispatch with focusName + focusInfo so pin & popup appear
         window.dispatchEvent(new CustomEvent('globe:flyto', {
-          detail: { lat: loc.lat, lng: loc.lng }
+          detail: {
+            lat: loc.lat,
+            lng: loc.lng,
+            focusName: loc.display_name,
+            focusInfo: loc.description || 'A beautiful destination to explore.',
+          }
         }));
       } else {
         setSearchError(data.error || 'No location found');
