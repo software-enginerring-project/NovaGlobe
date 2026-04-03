@@ -200,6 +200,38 @@ def logout():
     return response
 
 
+@main.route("/auth/change-password", methods=["POST"])
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+    confirm_password = data.get("confirm_password") or ""
+
+    if not current_password or not new_password or not confirm_password:
+        return _json_error("current_password, new_password, and confirm_password are required")
+    if len(new_password) < 6:
+        return _json_error("new_password must be at least 6 characters")
+    if new_password != confirm_password:
+        return _json_error("new_password and confirm_password must match")
+
+    user = User.query.get(request.user.get("user_id"))
+    if not user:
+        return _json_error("User not found", 404)
+
+    if not user.password_hash:
+        return _json_error("This account does not support password login yet", 400)
+    if not check_password_hash(user.password_hash, current_password):
+        return _json_error("Current password is incorrect", 401)
+    if check_password_hash(user.password_hash, new_password):
+        return _json_error("New password must be different from current password")
+
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Password updated successfully"})
+
+
 @main.route("/auth/google", methods=["POST"])
 def google_auth():
     data = request.get_json()
@@ -261,6 +293,35 @@ def profile():
             },
         }
     )
+
+
+@main.route("/profile", methods=["PUT"])
+@login_required
+def update_profile():
+    user_id = request.user.get("user_id")
+    user = User.query.get(user_id)
+    if not user:
+        return _json_error("User not found", 404)
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+
+    if not name:
+        return _json_error("name is required")
+    if not email:
+        return _json_error("email is required")
+
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user and existing_user.id != user_id:
+        return _json_error("This email is already used by another account", 409)
+
+    user.name = name
+    user.email = email
+    db.session.commit()
+
+    # Refresh auth cookie so JWT payload (name/email) stays in sync after profile edits.
+    return _build_auth_response(user, "Profile updated successfully")
 
 
 @main.route("/status")
