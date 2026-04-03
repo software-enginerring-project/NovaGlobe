@@ -2,17 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({
-  searchQuery,
-  setSearchQuery,
-  handleSearch,
-  isSearching,
-  handleSearchKeyDown,
   twinSliderVisible,
   setTwinSliderVisible,
   handleCompareClick
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const navigate = useNavigate();
 
   const goToLogin = () => navigate('/login');
@@ -22,61 +16,18 @@ const Navbar = ({
     <header className="pointer-events-auto relative z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-navy/80 backdrop-blur-2xl border border-cyan/20 shadow-2xl rounded-2xl md:rounded-3xl transition-all duration-300 focus-within:border-cyan/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.6),0_0_20px_rgba(8,201,192,0.18)]">
       
       {/* Brandmark */}
-      <div className={`flex items-center gap-3 shrink-0 transition-all ${mobileSearchOpen ? 'hidden md:flex' : 'flex'}`}>
+      <div id="nova-brand" className="flex items-center gap-3 shrink-0 transition-all">
 
         <div className="w-8 h-8 rounded-xl bg-[radial-gradient(circle_at_30%_30%,#fff_0%,#c9e0de_35%,#08c9c0_70%,transparent_72%)] shadow-[0_0_18px_rgba(8,201,192,0.6)] shrink-0" aria-hidden="true"></div>
         <span className="font-bold text-lg tracking-wider text-ink hidden sm:block" style={{ fontFamily: '"Syncopate", "Space Grotesk", sans-serif' }}>NovaGlobe</span>
       </div>
 
-      {/* Search Layout */}
-      <div className={`flex items-center gap-3 justify-center transition-all duration-300 ${mobileSearchOpen ? 'w-full' : 'hidden md:flex flex-1 md:px-4 lg:px-8'}`}>
-        <div className="relative w-full max-w-2xl group">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-            <svg className="w-5 h-5 text-cyan/50 group-focus-within:text-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </div>
-          <input
-            className="w-full bg-[#030b14]/75 text-ink placeholder-ink-dim/50 border border-cyan/20 rounded-full py-3.5 pl-11 pr-6 outline-none focus:bg-[#07121e]/40 focus:border-cyan/50 transition-all duration-300 text-sm"
-            placeholder="Explore coastal cities with sustainable energy..."
-            aria-label="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            autoFocus={mobileSearchOpen}
-          />
-        </div>
-        <button 
-          className="px-5 md:px-7 py-3.5 bg-transparent border border-cyan/30 text-ink rounded-full text-sm font-medium hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(8,201,192,0.2)] hover:border-cyan/60 transition-all duration-200 disabled:opacity-50 whitespace-nowrap min-w-max hidden sm:block"
-          type="button" 
-          onClick={handleSearch}
-          disabled={isSearching}
-        >
-          {isSearching ? 'Searching...' : 'Search'}
-        </button>
-        
-        {/* Mobile Search Close Button */}
-        {mobileSearchOpen && (
-          <button 
-            className="md:hidden p-2 text-cyan/70 hover:text-cyan"
-            onClick={() => setMobileSearchOpen(false)}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
-        )}
-      </div>
-
       {/* Top Actions & Avatar */}
-      <div className={`flex items-center gap-4 md:gap-6 shrink-0 justify-end transition-all ${mobileSearchOpen ? 'hidden md:flex' : 'flex'}`}>
+      <div className="flex items-center gap-4 md:gap-6 shrink-0 justify-end transition-all">
         
-        {/* Mobile Search Toggle */}
-        <button 
-          className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-ink hover:bg-cyan/10"
-          onClick={() => setMobileSearchOpen(true)}
-        >
-           <svg className="w-5 h-5 text-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        </button>
-
         <div className="flex items-center gap-3 md:gap-4">
-          <button 
+          <button
+            id="nova-twin-btn"
             className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full border border-cyan/20 text-ink hover:bg-cyan/10 hover:border-cyan/50 hover:-translate-y-0.5 hover:shadow-[0_0_15px_rgba(8,201,192,0.3)] transition-all duration-200"
             type="button" 
             title="Digital Twin Simulation"
@@ -89,7 +40,8 @@ const Navbar = ({
               <polyline points="2 12 12 17 22 12" />
             </svg>
           </button>
-          <button 
+          <button
+            id="nova-compare-btn"
             className="hidden sm:block px-5 md:px-6 py-2.5 md:py-3 rounded-full border border-cyan/20 text-ink text-sm hover:bg-cyan/10 hover:border-cyan/50 hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap" 
             type="button" 
             onClick={handleCompareClick}
@@ -99,7 +51,7 @@ const Navbar = ({
         </div>
         
         {/* Avatar Wrap */}
-        <div className="relative z-50 shrink-0">
+        <div id="nova-avatar" className="relative z-50 shrink-0">
           <button
             className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-cyan/10 border border-cyan/30 text-ink font-semibold text-xs md:text-[13px] flex items-center justify-center hover:bg-cyan/20 hover:border-cyan/50 transition-all duration-200"
             type="button"

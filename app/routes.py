@@ -784,63 +784,214 @@ def weather():
         return jsonify({"success": False, "error": "Failed to fetch weather data"}), 500
 
 
+def _fetch_newsapi_articles(query, max_records=10, from_date=None, to_date=None):
+    """Internal helper: fetch articles from NewsAPI."""
+    api_key = current_app.config.get("NEWS_API_KEY")
+    if not api_key:
+        return []
+        
+    news_url = "https://newsapi.org/v2/everything"
+    params = {
+        "q": query,
+        "sortBy": "publishedAt",
+        "pageSize": max_records,
+        "language": "en",
+        "apiKey": api_key,
+    }
+    if from_date:
+        params["from"] = from_date
+    if to_date:
+        params["to"] = to_date
+    
+    try:
+        resp = http_requests.get(news_url, params=params, timeout=10)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+    except Exception:
+        return []
+        
+    raw_articles = data.get("articles", [])
+    articles = []
+    for a in raw_articles:
+        title = (a.get("title") or "").strip()
+        if not title or title == "[Removed]":
+            continue
+        articles.append({
+            "title": title,
+            "domain": a.get("source", {}).get("name", "unknown"),
+            "seendate": a.get("publishedAt", ""),
+            "description": a.get("description", ""),
+        })
+    return articles
+
+
 @main.route("/news", methods=["GET"])
 def location_news():
-    """Fetch news about a location from NewsAPI.org, with optional date filtering."""
+    """Fetch news about a location from NewsAPI.org."""
     query = request.args.get("q", "").strip()
-    date_from = request.args.get("from", "").strip()  # YYYY-MM-DD
-    date_to = request.args.get("to", "").strip()       # YYYY-MM-DD
 
     if not query:
         return _json_error("q (location name) query parameter is required")
 
-    api_key = current_app.config.get("NEWS_API_KEY")
-    if not api_key:
-        return _json_error("News API key not configured on server", 500)
-
     try:
-        news_url = "https://newsapi.org/v2/everything"
-        params = {
-            "q": query,
-            "sortBy": "publishedAt",
-            "pageSize": 5,
-            "language": "en",
-            "apiKey": api_key,
-        }
-        if date_from:
-            params["from"] = date_from
-        if date_to:
-            params["to"] = date_to
-
-        resp = http_requests.get(news_url, params=params, timeout=10)
-
-        if resp.status_code != 200:
-            return jsonify({"success": False, "error": f"NewsAPI error: {resp.status_code}"}), resp.status_code
-
-        data = resp.json()
-        articles = data.get("articles", [])
-
-        return jsonify({
-            "success": True,
-            "articles": [
-                {
-                    "title": a.get("title", ""),
-                    "description": a.get("description", ""),
-                    "source": a.get("source", {}).get("name", ""),
-                    "url": a.get("url", ""),
-                    "image": a.get("urlToImage", ""),
-                    "publishedAt": a.get("publishedAt", ""),
-                }
-                for a in articles
-                if a.get("title") and a.get("title") != "[Removed]"
-            ],
-        })
-
+        articles = _fetch_newsapi_articles(query, max_records=10)
+        return jsonify({"success": True, "articles": articles})
     except http_requests.exceptions.Timeout:
-        return jsonify({"success": False, "error": "News API timed out"}), 504
+        return jsonify({"success": False, "error": "NewsAPI timed out"}), 504
     except Exception as e:
         print("News fetch error:", e)
         return jsonify({"success": False, "error": "Failed to fetch news"}), 500
+
+
+@main.route("/news/summary", methods=["POST"])
+def news_summary():
+    """RAG-powered: fetch news for a location and generate an AI summary."""
+    data = request.get_json(silent=True) or {}
+    location = (data.get("location") or "").strip()
+    if not location:
+        return _json_error("location is required")
+
+    try:
+        articles = _fetch_newsapi_articles(location, max_records=10)
+
+        if not articles:
+            return jsonify({
+                "success": True,
+                "summary": f"No recent news coverage found for {location} in the past week.",
+                "article_count": 0,
+            })
+
+        # Build context from retrieved articles
+        context_lines = []
+        for i, a in enumerate(articles, 1):
+            date_str = a.get("seendate", "")[:10] if a.get("seendate") else "Unknown date"
+            context_lines.append(f"{i}. [{date_str}] {a['title']} (via {a.get('domain', 'unknown')})")
+        news_context = "\n".join(context_lines)
+
+        # RAG: feed context to LLM for summary generation
+        import os
+        groq_key = os.getenv("GROQ_API_KEY")
+        if not groq_key:
+            return jsonify({
+                "success": True,
+                "summary": "AI summary unavailable (missing API key). Raw headlines:\n" + news_context,
+                "article_count": len(articles),
+            })
+
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import SystemMessage
+
+        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.5, api_key=groq_key)
+        prompt = f"""You are a concise news analyst for the NovaGlobe application.
+Based on the following recent news headlines about "{location}", write a brief, informative summary (3-5 sentences) of what is currently happening in or related to this location.
+Do NOT include any URLs or links. Focus on key events, trends, and notable developments.
+Write in a professional but engaging tone.
+
+Recent headlines:
+{news_context}
+
+Summary:"""
+
+        response = llm.invoke([SystemMessage(content=prompt)])
+        summary_text = response.content.strip()
+
+        return jsonify({
+            "success": True,
+            "summary": summary_text,
+            "article_count": len(articles),
+        })
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "GDELT API timed out"}), 504
+    except Exception as e:
+        print("News summary error:", e)
+        return jsonify({"success": False, "error": "Failed to generate news summary"}), 500
+
+
+@main.route("/news/ask", methods=["POST"])
+def news_ask():
+    """RAG-powered: answer a user question about a location using news + weather as context."""
+    data = request.get_json(silent=True) or {}
+    location = (data.get("location") or "").strip()
+    question = (data.get("question") or "").strip()
+    lat = data.get("lat")
+    lng = data.get("lng")
+
+    if not location or not question:
+        return _json_error("location and question are required")
+
+    try:
+        # Retrieve news context
+        articles = _fetch_newsapi_articles(location, max_records=10)
+        context_parts = []
+
+        if articles:
+            news_lines = []
+            for i, a in enumerate(articles, 1):
+                date_str = a.get("seendate", "")[:10] if a.get("seendate") else "Unknown"
+                news_lines.append(f"{i}. [{date_str}] {a['title']} (via {a.get('domain', 'unknown')})")
+            context_parts.append("Recent News Headlines:\n" + "\n".join(news_lines))
+        else:
+            context_parts.append("No recent news articles found for this location.")
+
+        # Retrieve weather context if coordinates available
+        if lat and lng:
+            try:
+                owm_key = current_app.config.get("OPENWEATHER_API_KEY")
+                if owm_key:
+                    weather_resp = http_requests.get(
+                        "https://api.openweathermap.org/data/2.5/weather",
+                        params={"lat": lat, "lon": lng, "appid": owm_key, "units": "metric"},
+                        timeout=6,
+                    )
+                    if weather_resp.status_code == 200:
+                        wd = weather_resp.json()
+                        desc = wd.get("weather", [{}])[0].get("description", "")
+                        temp = wd.get("main", {}).get("temp", "")
+                        humidity = wd.get("main", {}).get("humidity", "")
+                        context_parts.append(f"Current Weather: {desc}, {temp}\u00b0C, Humidity {humidity}%")
+            except Exception:
+                pass  # weather context is optional
+
+        full_context = "\n\n".join(context_parts)
+
+        # RAG: feed context + question to LLM
+        import os
+        groq_key = os.getenv("GROQ_API_KEY")
+        if not groq_key:
+            return _json_error("AI service key not configured", 500)
+
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import SystemMessage
+
+        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.5, api_key=groq_key)
+        prompt = f"""You are an expert location analyst for the NovaGlobe application.
+Answer the user's question about "{location}" using ONLY the context provided below.
+If the context doesn't contain enough information to fully answer, say so honestly and provide what you can.
+Do NOT include any URLs or links. Be concise (2-4 sentences) and informative.
+
+Context about {location}:
+{full_context}
+
+User Question: {question}
+
+Answer:"""
+
+        response = llm.invoke([SystemMessage(content=prompt)])
+        answer_text = response.content.strip()
+
+        return jsonify({
+            "success": True,
+            "answer": answer_text,
+            "location": location,
+        })
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "Request timed out"}), 504
+    except Exception as e:
+        print("News ask error:", e)
+        return jsonify({"success": False, "error": "Failed to answer question"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -970,3 +1121,18 @@ def weather_history():
         print("Historical weather fetch error:", e)
         return jsonify({"success": False, "error": "Failed to fetch historical weather"}), 500
 
+
+@main.route("/agent/compare", methods=["POST"])
+def agent_compare():
+    data = request.get_json(silent=True) or {}
+    place1 = (data.get("place1") or "").strip()
+    place2 = (data.get("place2") or "").strip()
+
+    if not place1 or not place2:
+        return _json_error("place1 and place2 are required")
+
+    from .services.agent_service import generate_location_comparison
+    result = generate_location_comparison(place1, place2)
+
+    status_code = 200 if result.get("success") else 500
+    return jsonify(result), status_code

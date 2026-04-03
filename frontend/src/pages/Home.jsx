@@ -2,16 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../assets/css/front.css';
-import AgentChat from '../components/AgentChat';
+import RobotGuide from '../components/RobotGuide';
 import Navbar from '../components/Navbar';
 import TwinSlider from '../components/TwinSlider';
 import CompareModal from '../components/CompareModal';
-
-const defaultResults = [
-  { title: 'Pacific Gridstream', detail: 'Ocean power simulation', score: '102%', tone: 'good' },
-  { title: 'Amsterdam Net Power', detail: 'ES research initiative', score: '83%', tone: 'mid' },
-  { title: 'Freiburg City', detail: 'EcoGrid status', score: '68%', tone: 'warm' },
-];
 
 const SUGGESTED_LOCATIONS = [
   'Pacific Gridstream',
@@ -88,10 +82,7 @@ export default function Home() {
   const [place2, setPlace2] = useState('');
   const pulseTimer = useRef(null);
   
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState(defaultResults);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
   const [twinError, setTwinError] = useState(null);
   const [twinLoading, setTwinLoading] = useState(false);
   const [twinSyncing, setTwinSyncing] = useState(false);
@@ -331,78 +322,28 @@ export default function Home() {
 
   const handleStartComparison = async () => {
     if (!place1 || !place2 || place1 === place2) return;
-    if (!selectedAssetId) {
-      setTwinError('Create/load a twin asset before running comparison');
-      return;
-    }
-    setTwinSyncing(true);
+    
+    setIsComparing(true);
     setTwinError(null);
     try {
-      const baseline = mapNameToParams(place1);
-      const candidate = mapNameToParams(place2);
-      const res = await api.post('/api/v1/twin/scenarios/compare', {
-        asset_id: selectedAssetId,
-        baseline,
-        candidate,
+      const res = await api.post('/agent/compare', {
+        place1,
+        place2,
       });
       setCompareResult({
         labelA: place1,
         labelB: place2,
-        ...(res.data?.result || {}),
+        text: res.data?.comparison || 'No comparison report generated.',
       });
       setCompareModalVisible(false);
+      setPlace1('');
+      setPlace2('');
     } catch (error) {
-      withTwinError(error, 'Scenario comparison failed');
+      console.error("Comparison Error", error);
+      alert("Failed to generate comparison. " + (error?.response?.data?.error || ""));
     } finally {
-      setTwinSyncing(false);
+      setIsComparing(false);
     }
-  };
-
-  const handleSearch = async () => {
-    const query = searchQuery.trim();
-    if (!query) return;
-
-    setIsSearching(true);
-    setSearchError(null);
-    window.dispatchEvent(new CustomEvent('agent:close'));
-
-    try {
-      const res = await api.post('/search', { query }, { withCredentials: false });
-      const data = res.data;
-
-      if (data.success && data.location) {
-        const loc = data.location;
-        setSearchResults([{
-          title: loc.display_name,
-          detail: loc.description,
-          score: `${Math.round(loc.confidence * 100)}%`,
-          tone: loc.confidence > 0.8 ? 'good' : loc.confidence > 0.5 ? 'mid' : 'warm',
-        }]);
-
-        // Single dispatch with focusName + focusInfo so pin & popup appear
-        window.dispatchEvent(new CustomEvent('globe:flyto', {
-          detail: {
-            lat: loc.lat,
-            lng: loc.lng,
-            focusName: loc.display_name,
-            focusInfo: loc.description || 'A beautiful destination to explore.',
-          }
-        }));
-      } else {
-        setSearchError(data.error || 'No location found');
-        setSearchResults(defaultResults);
-      }
-    } catch (err) {
-      console.error('Search error:', err);
-      setSearchError(err.response?.data?.error || 'Search failed. Is the backend running?');
-      setSearchResults(defaultResults);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter') handleSearch();
   };
 
   const openTwinPanel = async () => {
@@ -417,11 +358,6 @@ export default function Home() {
     <div className="shell dashboard">
 
       <Navbar 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        handleSearch={handleSearch}
-        isSearching={isSearching}
-        handleSearchKeyDown={handleSearchKeyDown}
         twinSliderVisible={twinSliderVisible}
         setTwinSliderVisible={setTwinSliderVisible}
         handleCompareClick={handleCompareClick}
@@ -518,10 +454,15 @@ export default function Home() {
 
 
       {compareResult && (
-        <div className="compare-result-toast">
-          <div className="toast-head">Comparison: {compareResult.labelA} vs {compareResult.labelB}</div>
-          <div className="toast-body">
-            Winner: <strong>{compareResult.winner || '--'}</strong> | Score: <strong>{compareResult.score ?? '--'}</strong>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-navy/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-[min(95%,800px)] bg-[#030b14]/90 backdrop-blur-2xl border border-cyan/40 shadow-[0_30px_70px_rgba(0,0,0,0.9),0_0_40px_rgba(8,201,192,0.2)] rounded-[2rem] p-6 md:p-8 flex flex-col gap-5 max-h-[85vh] animate-in slide-in-from-bottom-8 duration-400 pointer-events-auto">
+            <div className="flex justify-between items-center border-b border-cyan/20 pb-4">
+              <h3 className="m-0 font-bold text-xl text-cyan uppercase tracking-widest" style={{ fontFamily: '"Syncopate", "Space Grotesk", sans-serif' }}>{compareResult.labelA} <span className="text-ink-dim px-2 text-sm">VS</span> {compareResult.labelB}</h3>
+              <button className="text-ink-dim hover:text-cyan text-3xl leading-none p-2 hover:scale-110 transition-transform" onClick={() => setCompareResult(null)} title="Close">&times;</button>
+            </div>
+            <div className="overflow-y-auto text-ink/90 text-[15px] leading-relaxed whitespace-pre-wrap pr-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-cyan/20 hover:[&::-webkit-scrollbar-thumb]:bg-cyan/40 [&::-webkit-scrollbar-thumb]:rounded-full markdown-body custom-scrollbar">
+              {compareResult.text}
+            </div>
           </div>
         </div>
       )}
@@ -535,9 +476,10 @@ export default function Home() {
         place2={place2}
         setPlace2={setPlace2}
         handleStartComparison={handleStartComparison}
+        isComparing={isComparing}
       />
       
-      <AgentChat />
+      <RobotGuide />
     </div>
   );
 }

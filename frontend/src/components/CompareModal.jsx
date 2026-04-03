@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CompareModal = ({ visible, setVisible, SUGGESTED_LOCATIONS, place1, setPlace1, place2, setPlace2, handleStartComparison }) => {
+const CompareModal = ({ visible, setVisible, SUGGESTED_LOCATIONS, place1, setPlace1, place2, setPlace2, handleStartComparison, isComparing }) => {
   if (!visible) return null;
 
   return (
@@ -49,11 +49,11 @@ const CompareModal = ({ visible, setVisible, SUGGESTED_LOCATIONS, place1, setPla
         </div>
         <div className="mt-2 text-right">
           <button
-            className={`w-full md:w-auto px-8 py-3.5 rounded-full border border-cyan text-ink font-semibold tracking-wide hover:shadow-[0_0_20px_rgba(8,201,192,0.4)] transition-all duration-300 ${place1 && place2 && place1 !== place2 ? 'bg-cyan hover:bg-cyan/90 text-navy' : 'bg-transparent opacity-50 cursor-not-allowed'}`}
+            className={`w-full md:w-auto px-8 py-3.5 rounded-full border border-cyan text-ink font-semibold tracking-wide hover:shadow-[0_0_20px_rgba(8,201,192,0.4)] transition-all duration-300 ${place1 && place2 && place1 !== place2 && !isComparing ? 'bg-cyan hover:bg-cyan/90 text-navy' : 'bg-transparent opacity-50 cursor-not-allowed'}`}
             onClick={handleStartComparison}
-            disabled={!place1 || !place2 || place1 === place2}
+            disabled={!place1 || !place2 || place1 === place2 || isComparing}
           >
-            {place1 === place2 && place1 !== "" ? "Select Distinct Areas" : "Start Comparison"}
+            {isComparing ? "Generating Report..." : place1 === place2 && place1 !== "" ? "Select Distinct Areas" : "Start Comparison"}
           </button>
         </div>
       </div>

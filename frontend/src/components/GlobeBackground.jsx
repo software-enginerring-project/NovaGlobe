@@ -36,6 +36,9 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [newsData, setNewsData] = useState(null);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [askInput, setAskInput] = useState('');
+  const [askAnswer, setAskAnswer] = useState(null);
+  const [askLoading, setAskLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('weather');
   const [popupFlipped, setPopupFlipped] = useState(false);
   const [sliderIndex, setSliderIndex] = useState(SLIDER_DAYS); // rightmost = today
@@ -357,6 +360,8 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
             // Fetch latest news for this location
             setNewsData(null);
             setNewsLoading(true);
+            setAskAnswer(null);
+            setAskInput('');
             fetch(`${API_BASE}/news?q=${encodeURIComponent(focusName)}`)
               .then(res => res.json())
               .then(data => {
@@ -593,6 +598,8 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                   setPopupData(null);
                   setWeatherData(null);
                   setNewsData(null);
+                  setAskAnswer(null);
+                  setAskInput('');
                   if (viewerRef.current && !viewerRef.current.isDestroyed()) {
                     viewerRef.current.entities.removeAll();
                   }
@@ -671,9 +678,9 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                 // ── Re-fetch news ──
                 setNewsData(null);
                 setNewsLoading(true);
+                setAskAnswer(null);
                 let newsUrl = `${API_BASE}/news?q=${encodeURIComponent(loc.name)}`;
                 if (!isToday) {
-                  // Fetch news from selectedDate ± 1 day
                   const dayBefore = daysAgo(SLIDER_DAYS - idx + 1);
                   const dayAfter  = daysAgo(Math.max(0, SLIDER_DAYS - idx - 1));
                   newsUrl += `&from=${dayBefore}&to=${dayAfter}`;
@@ -818,12 +825,12 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
               </div>
             )}
 
-            {/* ── News Tab ── */}
+            {/* ── News Tab (NewsAPI + Q&A Search) ── */}
             {activeTab === 'news' && (
-              <div style={{ padding: '12px 16px 14px' }}>
+              <div style={{ padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                
                 {newsLoading && (
-                  <div style={{ textAlign: 'center', padding: '10px 0', color: '#4aa8c7', fontSize: '0.75rem',
-                    letterSpacing: '0.05em' }}>
+                  <div style={{ textAlign: 'center', padding: '10px 0', color: '#4aa8c7', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
                     ● Loading news…
                   </div>
                 )}
@@ -837,15 +844,9 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
-                          display: 'block',
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          borderRadius: '12px',
-                          padding: '10px 12px',
-                          transition: 'all 0.2s ease',
-                          cursor: 'pointer',
+                          display: 'block', textDecoration: 'none', color: 'inherit',
+                          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                          borderRadius: '12px', padding: '10px 12px', transition: 'all 0.2s ease', cursor: 'pointer',
                         }}
                         onMouseEnter={e => {
                           e.currentTarget.style.background = 'rgba(13,202,240,0.08)';
@@ -857,23 +858,10 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                          {article.image && (
-                            <img
-                              src={article.image}
-                              alt=""
-                              style={{
-                                width: 52, height: 52, borderRadius: '8px',
-                                objectFit: 'cover', flexShrink: 0,
-                                border: '1px solid rgba(255,255,255,0.06)',
-                              }}
-                              onError={e => { e.target.style.display = 'none'; }}
-                            />
-                          )}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
                               fontSize: '0.78rem', fontWeight: 600, color: '#d0e8f5',
-                              lineHeight: 1.35,
-                              display: '-webkit-box', WebkitLineClamp: 2,
+                              lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2,
                               WebkitBoxOrient: 'vertical', overflow: 'hidden',
                             }}>
                               {article.title}
@@ -883,19 +871,15 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                               marginTop: '5px', fontSize: '0.6rem', color: '#5a8ba8',
                             }}>
                               <span style={{
-                                background: 'rgba(13,202,240,0.12)',
-                                color: '#0dcaf0',
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                fontWeight: 600,
-                                fontSize: '0.58rem',
-                                letterSpacing: '0.02em',
+                                background: 'rgba(13,202,240,0.12)', color: '#0dcaf0',
+                                padding: '1px 6px', borderRadius: '4px', fontWeight: 600,
+                                fontSize: '0.58rem', letterSpacing: '0.02em',
                               }}>
-                                {article.source}
+                                {article.domain}
                               </span>
                               <span>
-                                {article.publishedAt
-                                  ? new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                {article.seendate
+                                  ? new Date(article.seendate).toLocaleDateString('en-US', {
                                       month: 'short', day: 'numeric',
                                     })
                                   : ''}
@@ -920,6 +904,130 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                     News data unavailable
                   </div>
                 )}
+
+                {/* Q&A Answer Display */}
+                {askLoading && (
+                  <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#a78bfa', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                      <span style={{
+                        display: 'inline-block', width: '14px', height: '14px',
+                        border: '2px solid rgba(167,139,250,0.3)', borderTopColor: '#a78bfa',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                      }} />
+                      Analyzing…
+                    </div>
+                  </div>
+                )}
+
+                {askAnswer && !askLoading && (
+                  <div style={{
+                    background: 'rgba(167,139,250,0.06)',
+                    border: '1px solid rgba(167,139,250,0.2)',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      marginBottom: '8px',
+                    }}>
+                      <span style={{ fontSize: '0.85rem' }}>💡</span>
+                      <span style={{
+                        fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase',
+                        letterSpacing: '0.1em', color: '#a78bfa',
+                      }}>AI Answer</span>
+                    </div>
+                    <p style={{
+                      margin: 0, fontSize: '0.76rem', lineHeight: 1.6,
+                      color: '#c0dae8', fontFamily: "'Inter', sans-serif",
+                    }}>
+                      {askAnswer}
+                    </p>
+                  </div>
+                )}
+
+                {/* Search Bar — Ask about this location */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = askInput.trim();
+                    if (!q || askLoading) return;
+                    // Auto-close the guide panel
+                    window.dispatchEvent(new Event('agent:close'));
+                    setAskLoading(true);
+                    setAskAnswer(null);
+                    const loc = latLngRef.current;
+                    fetch(`${API_BASE}/news/ask`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        location: popupData?.title || '',
+                        question: q,
+                        lat: loc?.lat,
+                        lng: loc?.lng,
+                      }),
+                    })
+                      .then(r => r.json())
+                      .then(d => { if (d.success && d.answer) setAskAnswer(d.answer); })
+                      .catch(err => {
+                        console.warn('Ask failed:', err);
+                        setAskAnswer('Sorry, I could not process your question right now.');
+                      })
+                      .finally(() => setAskLoading(false));
+                  }}
+                  style={{
+                    display: 'flex', gap: '6px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '12px',
+                    padding: '6px 8px',
+                    transition: 'border-color 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(13,202,240,0.4)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={askInput}
+                    onChange={(e) => setAskInput(e.target.value)}
+                    placeholder="Ask about this location..."
+                    disabled={askLoading}
+                    style={{
+                      flex: 1,
+                      background: 'none',
+                      border: 'none',
+                      outline: 'none',
+                      color: '#d0e8f5',
+                      fontSize: '0.75rem',
+                      fontFamily: "'Inter', sans-serif",
+                      padding: '4px 6px',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={askLoading || !askInput.trim()}
+                    style={{
+                      background: askInput.trim() ? 'rgba(13,202,240,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: '1px solid',
+                      borderColor: askInput.trim() ? 'rgba(13,202,240,0.3)' : 'rgba(255,255,255,0.06)',
+                      borderRadius: '8px',
+                      padding: '4px 10px',
+                      cursor: askInput.trim() ? 'pointer' : 'default',
+                      color: askInput.trim() ? '#0dcaf0' : '#3d6e85',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      fontFamily: "'Inter', sans-serif",
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Ask
+                  </button>
+                </form>
               </div>
             )}
 
