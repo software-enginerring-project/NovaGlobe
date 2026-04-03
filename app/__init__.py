@@ -4,7 +4,7 @@ from config import Config
 from .models import db
 from flask_migrate import Migrate
 from dotenv import load_dotenv
-
+import os
 
 def create_app():
     load_dotenv()
@@ -19,5 +19,4 @@ def create_app():
 
     from .routes import main
     app.register_blueprint(main)
-
     return app

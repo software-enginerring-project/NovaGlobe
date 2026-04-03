@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import jwt
+import requests as http_requests
 from flask import Blueprint, current_app, jsonify, make_response, request
 from google.auth.transport import requests as grequests
 from google.oauth2 import id_token
@@ -719,3 +720,253 @@ def site_kpis(site_id):
     if not TwinSite.query.get(site_id):
         return _json_error("site not found", 404)
     return jsonify({"site_id": site_id, "kpis": compute_site_kpis(site_id)})
+
+
+@main.route("/weather", methods=["GET"])
+def weather():
+    """Fetch real-time weather from OpenWeatherMap for given lat/lng."""
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
+
+    if not lat or not lng:
+        return _json_error("lat and lng query parameters are required")
+
+    api_key = current_app.config.get("OPENWEATHER_API_KEY")
+    if not api_key:
+        return _json_error("OpenWeather API key not configured on server", 500)
+
+    try:
+        owm_url = "https://api.openweathermap.org/data/2.5/weather"
+        resp = http_requests.get(
+            owm_url,
+            params={
+                "lat": lat,
+                "lon": lng,
+                "appid": api_key,
+                "units": "metric",
+            },
+            timeout=8,
+        )
+
+        if resp.status_code != 200:
+            return jsonify({"success": False, "error": f"OpenWeather API error: {resp.status_code}"}), resp.status_code
+
+        data = resp.json()
+        weather_item = data.get("weather", [{}])[0]
+
+        return jsonify({
+            "success": True,
+            "weather": {
+                "temp": data["main"]["temp"],
+                "feels_like": data["main"]["feels_like"],
+                "temp_min": data["main"]["temp_min"],
+                "temp_max": data["main"]["temp_max"],
+                "humidity": data["main"]["humidity"],
+                "pressure": data["main"]["pressure"],
+                "wind_speed": data.get("wind", {}).get("speed", 0),
+                "wind_deg": data.get("wind", {}).get("deg", 0),
+                "description": weather_item.get("description", ""),
+                "icon": weather_item.get("icon", "01d"),
+                "main": weather_item.get("main", ""),
+                "clouds": data.get("clouds", {}).get("all", 0),
+                "visibility": data.get("visibility", 10000),
+                "name": data.get("name", ""),
+                "country": data.get("sys", {}).get("country", ""),
+                "sunrise": data.get("sys", {}).get("sunrise"),
+                "sunset": data.get("sys", {}).get("sunset"),
+            },
+        })
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "Weather API timed out"}), 504
+    except Exception as e:
+        print("Weather fetch error:", e)
+        return jsonify({"success": False, "error": "Failed to fetch weather data"}), 500
+
+
+@main.route("/news", methods=["GET"])
+def location_news():
+    """Fetch news about a location from NewsAPI.org, with optional date filtering."""
+    query = request.args.get("q", "").strip()
+    date_from = request.args.get("from", "").strip()  # YYYY-MM-DD
+    date_to = request.args.get("to", "").strip()       # YYYY-MM-DD
+
+    if not query:
+        return _json_error("q (location name) query parameter is required")
+
+    api_key = current_app.config.get("NEWS_API_KEY")
+    if not api_key:
+        return _json_error("News API key not configured on server", 500)
+
+    try:
+        news_url = "https://newsapi.org/v2/everything"
+        params = {
+            "q": query,
+            "sortBy": "publishedAt",
+            "pageSize": 5,
+            "language": "en",
+            "apiKey": api_key,
+        }
+        if date_from:
+            params["from"] = date_from
+        if date_to:
+            params["to"] = date_to
+
+        resp = http_requests.get(news_url, params=params, timeout=10)
+
+        if resp.status_code != 200:
+            return jsonify({"success": False, "error": f"NewsAPI error: {resp.status_code}"}), resp.status_code
+
+        data = resp.json()
+        articles = data.get("articles", [])
+
+        return jsonify({
+            "success": True,
+            "articles": [
+                {
+                    "title": a.get("title", ""),
+                    "description": a.get("description", ""),
+                    "source": a.get("source", {}).get("name", ""),
+                    "url": a.get("url", ""),
+                    "image": a.get("urlToImage", ""),
+                    "publishedAt": a.get("publishedAt", ""),
+                }
+                for a in articles
+                if a.get("title") and a.get("title") != "[Removed]"
+            ],
+        })
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "News API timed out"}), 504
+    except Exception as e:
+        print("News fetch error:", e)
+        return jsonify({"success": False, "error": "Failed to fetch news"}), 500
+
+
+# ---------------------------------------------------------------------------
+# WMO Weather‑code → human description + OWM-style icon mapping
+# ---------------------------------------------------------------------------
+_WMO_MAP = {
+    0:  ("Clear sky",            "01d"),
+    1:  ("Mainly clear",         "02d"),
+    2:  ("Partly cloudy",        "03d"),
+    3:  ("Overcast",             "04d"),
+    45: ("Fog",                  "50d"),
+    48: ("Depositing rime fog",  "50d"),
+    51: ("Light drizzle",        "09d"),
+    53: ("Moderate drizzle",     "09d"),
+    55: ("Dense drizzle",        "09d"),
+    56: ("Light freezing drizzle","09d"),
+    57: ("Dense freezing drizzle","09d"),
+    61: ("Slight rain",          "10d"),
+    63: ("Moderate rain",        "10d"),
+    65: ("Heavy rain",           "10d"),
+    66: ("Light freezing rain",  "13d"),
+    67: ("Heavy freezing rain",  "13d"),
+    71: ("Slight snowfall",      "13d"),
+    73: ("Moderate snowfall",    "13d"),
+    75: ("Heavy snowfall",       "13d"),
+    77: ("Snow grains",          "13d"),
+    80: ("Slight rain showers",  "09d"),
+    81: ("Moderate rain showers","09d"),
+    82: ("Violent rain showers", "09d"),
+    85: ("Slight snow showers",  "13d"),
+    86: ("Heavy snow showers",   "13d"),
+    95: ("Thunderstorm",         "11d"),
+    96: ("Thunderstorm with hail","11d"),
+    99: ("Thunderstorm with heavy hail", "11d"),
+}
+
+
+@main.route("/weather/history", methods=["GET"])
+def weather_history():
+    """Fetch historical daily climate data from Open-Meteo (free, no key)."""
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
+    date = request.args.get("date", "").strip()   # YYYY-MM-DD
+
+    if not lat or not lng or not date:
+        return _json_error("lat, lng, and date query parameters are required")
+
+    try:
+        archive_url = "https://archive-api.open-meteo.com/v1/archive"
+        resp = http_requests.get(
+            archive_url,
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "start_date": date,
+                "end_date": date,
+                "daily": ",".join([
+                    "temperature_2m_max",
+                    "temperature_2m_min",
+                    "temperature_2m_mean",
+                    "apparent_temperature_max",
+                    "apparent_temperature_min",
+                    "precipitation_sum",
+                    "windspeed_10m_max",
+                    "weathercode",
+                    "relative_humidity_2m_mean",
+                ]),
+                "timezone": "auto",
+            },
+            timeout=10,
+        )
+
+        if resp.status_code != 200:
+            return jsonify({"success": False, "error": f"Open-Meteo error: {resp.status_code}"}), resp.status_code
+
+        data = resp.json()
+        daily = data.get("daily", {})
+
+        if not daily or not daily.get("time"):
+            return jsonify({"success": False, "error": "No historical data found"}), 404
+
+        # Extract the first (only) day's values
+        wmo_code = (daily.get("weathercode") or [0])[0] or 0
+        desc, icon = _WMO_MAP.get(wmo_code, ("Unknown", "01d"))
+
+        temp_max = (daily.get("temperature_2m_max") or [None])[0]
+        temp_min = (daily.get("temperature_2m_min") or [None])[0]
+        temp_mean = (daily.get("temperature_2m_mean") or [None])[0]
+        feels_max = (daily.get("apparent_temperature_max") or [None])[0]
+        feels_min = (daily.get("apparent_temperature_min") or [None])[0]
+        humidity = (daily.get("relative_humidity_2m_mean") or [None])[0]
+        wind = (daily.get("windspeed_10m_max") or [None])[0]
+        precip = (daily.get("precipitation_sum") or [None])[0]
+
+        # Compute averages where sensible
+        temp = temp_mean if temp_mean is not None else (
+            ((temp_max or 0) + (temp_min or 0)) / 2 if temp_max is not None else 0
+        )
+        feels_like = (
+            ((feels_max or 0) + (feels_min or 0)) / 2
+            if feels_max is not None else temp
+        )
+
+        return jsonify({
+            "success": True,
+            "weather": {
+                "temp": round(temp, 1),
+                "feels_like": round(feels_like, 1),
+                "temp_min": round(temp_min, 1) if temp_min is not None else None,
+                "temp_max": round(temp_max, 1) if temp_max is not None else None,
+                "humidity": round(humidity) if humidity is not None else None,
+                "wind_speed": round(wind / 3.6, 2) if wind is not None else 0,  # km/h → m/s
+                "description": desc,
+                "icon": icon,
+                "clouds": None,
+                "precipitation_mm": round(precip, 1) if precip is not None else 0,
+                "name": "",
+                "country": "",
+                "historical": True,
+                "date": date,
+            },
+        })
+
+    except http_requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "Open-Meteo API timed out"}), 504
+    except Exception as e:
+        print("Historical weather fetch error:", e)
+        return jsonify({"success": False, "error": "Failed to fetch historical weather"}), 500
+
