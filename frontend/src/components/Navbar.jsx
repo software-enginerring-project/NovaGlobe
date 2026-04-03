@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Navbar = ({
   twinSliderVisible,
@@ -7,10 +8,41 @@ const Navbar = ({
   handleCompareClick
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   const goToLogin = () => navigate('/login');
   const goToProfile = () => navigate('/profile');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      try {
+        await axios.get('/api/profile', { withCredentials: true });
+        if (isMounted) setIsAuthenticated(true);
+      } catch (_) {
+        if (isMounted) setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+    } catch (_) {
+      // Redirect even if logout request fails.
+    }
+    setIsAuthenticated(false);
+    setMenuOpen(false);
+    navigate('/login');
+  };
 
   return (
     <header className="pointer-events-auto relative z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-navy/80 backdrop-blur-2xl border border-cyan/20 shadow-2xl rounded-2xl md:rounded-3xl transition-all duration-300 focus-within:border-cyan/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.6),0_0_20px_rgba(8,201,192,0.18)]">
@@ -65,27 +97,42 @@ const Navbar = ({
           {/* Avatar Dropdown */}
           {menuOpen && (
             <div className="absolute right-0 top-[calc(100%+12px)] w-56 bg-[#0a1522] border border-cyan/50 rounded-2xl p-2.5 shadow-[0_28px_70px_rgba(0,0,0,0.75)] animate-in fade-in zoom-in-95 duration-200">
-              <button 
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5" 
-                type="button" 
-                onClick={() => { goToLogin(); setMenuOpen(false); }}
-              >
-                <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" /></svg>
-                </span>
-                <span>Sign in / Sign up</span>
-              </button>
+              {isAuthenticated ? (
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                  type="button"
+                  onClick={handleSignOut}
+                >
+                  <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" /></svg>
+                  </span>
+                  <span>Sign out</span>
+                </button>
+              ) : (
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                  type="button"
+                  onClick={() => { goToLogin(); setMenuOpen(false); }}
+                >
+                  <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" /></svg>
+                  </span>
+                  <span>Sign in / Sign up</span>
+                </button>
+              )}
               <div className="h-px bg-cyan/30 mx-1 mb-1.5" />
-              <button 
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5" 
-                type="button" 
-                onClick={() => { goToProfile(); setMenuOpen(false); }}
-              >
-                <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" /></svg>
-                </span>
-                <span>My profile</span>
-              </button>
+              {isAuthenticated && (
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                  type="button"
+                  onClick={() => { goToProfile(); setMenuOpen(false); }}
+                >
+                  <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" /></svg>
+                  </span>
+                  <span>My profile</span>
+                </button>
+              )}
               <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors" type="button">
                 <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5v5.4l3.5 2.1-.8 1.3L11.5 13V7H13z" /></svg>

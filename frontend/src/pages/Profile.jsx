@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../assets/css/profile1.css';
 import '../assets/css/feedback.css';
 
@@ -7,11 +8,14 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState('');
   
   // Profile Content
-  const [username, setUsername] = useState('Rhea Kline');
-  const [email, setEmail] = useState('rhea.kline@novaglobe.io');
-  const [role, setRole] = useState('Planetary Systems Lead');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('viewer');
+  const [memberSince, setMemberSince] = useState('');
   
   // Feedback
   const [feedbackText, setFeedbackText] = useState('');
@@ -24,6 +28,42 @@ export default function Profile() {
   const [passwordMessage, setPasswordMessage] = useState({ text: '', type: '' });
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const response = await axios.get('/api/profile', { withCredentials: true });
+        const user = response?.data?.user || {};
+
+        setUsername(user.name || 'NovaGlobe User');
+        setEmail(user.email || '');
+        setRole(user.role || 'viewer');
+
+        const createdAt = user.created_at ? new Date(user.created_at) : null;
+        if (createdAt && !Number.isNaN(createdAt.getTime())) {
+          setMemberSince(
+            createdAt.toLocaleDateString(undefined, {
+              month: 'long',
+              year: 'numeric',
+            })
+          );
+        } else {
+          setMemberSince('N/A');
+        }
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          navigate('/login');
+          return;
+        }
+        setProfileError(error?.response?.data?.error || 'Failed to load profile');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
 
   const handleEditToggle = () => setIsEditing(!isEditing);
 
@@ -76,6 +116,24 @@ export default function Profile() {
     setPasswordOpen(false);
   };
 
+  const handleSignOut = async (event) => {
+    event.preventDefault();
+    try {
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+    } catch (_) {
+      // Ignore logout errors and redirect regardless.
+    }
+    navigate('/login');
+  };
+
+  if (loadingProfile) {
+    return (
+      <div className="page-wrapper" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#dce9ff' }}>Loading profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="page-wrapper" onClick={closePanels} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header className="topbar">
@@ -88,14 +146,17 @@ export default function Profile() {
         </div>
         <nav className="nav-links">
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Dashboard</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Sign out</a>
+          <a href="#" onClick={handleSignOut}>Sign out</a>
         </nav>
       </header>
 
       <main className="page">
         <section className={`profile-card ${isEditing ? 'is-editing' : ''}`} id="profile-card">
+          {profileError && (
+            <p style={{ color: '#ff8a8a', textAlign: 'center', marginBottom: 10 }}>{profileError}</p>
+          )}
           <div className="avatar-wrap">
-            <div className="avatar">RK</div>
+            <div className="avatar">{(username || 'N').slice(0, 2).toUpperCase()}</div>
           </div>
 
           <h1 
@@ -150,7 +211,7 @@ export default function Profile() {
               <span className="info-icon purple">M</span>
               <div>
                 <p className="info-label">Member Since</p>
-                <p className="info-value">January 2024</p>
+                <p className="info-value">{memberSince}</p>
               </div>
             </div>
           </div>

@@ -13,21 +13,67 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetSent, setResetSent] = useState(false);
+  const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setAuthMessage({ text: "", type: "" });
+
+    if (isSubmitting) return;
+
     if (mode === "login") {
-      navigate("/"); // Redirect to Home on login
+      try {
+        setIsSubmitting(true);
+        const response = await axios.post(
+          "/api/auth/login",
+          { email, password, remember },
+          { withCredentials: true }
+        );
+        const message = response?.data?.message || "Logged in successfully";
+        setAuthMessage({ text: message, type: "success" });
+        setTimeout(() => navigate("/profile"), 600);
+      } catch (error) {
+        const message = error?.response?.data?.error || "Login failed";
+        setAuthMessage({ text: message, type: "error" });
+      } finally {
+        setIsSubmitting(false);
+      }
     } else if (mode === "signup") {
-      setMode("login");
+      if (password !== confirmPassword) {
+        setAuthMessage({ text: "Passwords do not match.", type: "error" });
+        return;
+      }
+      try {
+        setIsSubmitting(true);
+        await axios.post(
+          "/api/auth/signup",
+          {
+            name: username,
+            email,
+            password,
+          },
+          { withCredentials: true }
+        );
+        setAuthMessage({ text: "Account created successfully. Please sign in.", type: "success" });
+        setPassword("");
+        setConfirmPassword("");
+        setMode("login");
+      } catch (error) {
+        const message = error?.response?.data?.error || "Signup failed";
+        setAuthMessage({ text: message, type: "error" });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   const handleForgot = () => {
     setMode("reset");
     setResetSent(false);
+    setAuthMessage({ text: "", type: "" });
   };
 
   const handleReset = (event) => {
@@ -45,9 +91,10 @@ export default function Login() {
         { withCredentials: true }
       );
 
-      navigate("/");
+      navigate("/profile");
     } catch (err) {
       console.error(err);
+      setAuthMessage({ text: "Google login failed", type: "error" });
     }
   };
 
@@ -124,7 +171,14 @@ export default function Login() {
                     Forgot password?
                   </button>
                 </div>
-                <button type="submit">Access NovaGlobe</button>
+                <button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Signing in..." : "Access NovaGlobe"}
+                </button>
+                {authMessage.text && (
+                  <div className="notice" style={{ marginTop: 12, color: authMessage.type === "error" ? "#ff8a8a" : "#89f0cf" }}>
+                    {authMessage.text}
+                  </div>
+                )}
               </form>
               <div style={{ marginTop: 16 }}>
                 <GoogleLogin
@@ -191,7 +245,14 @@ export default function Login() {
                     required
                   />
                 </div>
-                <button type="submit">Create NovaGlobe account</button>
+                <button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating account..." : "Create NovaGlobe account"}
+                </button>
+                {authMessage.text && (
+                  <div className="notice" style={{ marginTop: 12, color: authMessage.type === "error" ? "#ff8a8a" : "#89f0cf" }}>
+                    {authMessage.text}
+                  </div>
+                )}
               </form>
               <div style={{ marginTop: 16 }}>
                 <GoogleLogin
