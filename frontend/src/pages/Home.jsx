@@ -5,6 +5,7 @@ import AgentChat from '../components/AgentChat';
 import Navbar from '../components/Navbar';
 import TwinSlider from '../components/TwinSlider';
 import CompareModal from '../components/CompareModal';
+import ComparisonPanel from '../components/ComparisonPanel';
 
 const defaultResults = [
   { title: "Pacific Gridstream", detail: "Ocean power simulation", score: "102%", tone: "good", },
@@ -26,6 +27,9 @@ export default function Home() {
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [place1, setPlace1] = useState('');
   const [place2, setPlace2] = useState('');
+  const [comparisonVisible, setComparisonVisible] = useState(false);
+  const [comparisonData, setComparisonData] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
   const pulseTimer = useRef(null);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,10 +47,30 @@ export default function Home() {
 
   const handleCompareClick = () => setCompareModalVisible(true);
   
-  const handleStartComparison = () => {
+  const handleStartComparison = async () => {
     if (place1 && place2 && place1 !== place2) {
-      window.alert(`Comparing ${place1} and ${place2}`);
-      setCompareModalVisible(false);
+      setIsComparing(true);
+      try {
+        const [res1, res2] = await Promise.all([
+          axios.post('http://localhost:5000/search', { query: place1 }),
+          axios.post('http://localhost:5000/search', { query: place2 })
+        ]);
+        
+        let loc1 = res1.data.success && res1.data.location ? res1.data.location : null;
+        let loc2 = res2.data.success && res2.data.location ? res2.data.location : null;
+
+        if (!loc1) loc1 = { display_name: place1, description: "Information temporarily unavailable from the database.", confidence: 0, lat: 0, lng: 0 };
+        if (!loc2) loc2 = { display_name: place2, description: "Information temporarily unavailable from the database.", confidence: 0, lat: 0, lng: 0 };
+
+        setComparisonData({ data1: loc1, data2: loc2 });
+        setCompareModalVisible(false);
+        setComparisonVisible(true);
+      } catch (err) {
+        console.error('Comparison error:', err);
+        alert('Failed to execute comparison search.');
+      } finally {
+        setIsComparing(false);
+      }
     }
   };
 
@@ -124,7 +148,17 @@ export default function Home() {
         place2={place2}
         setPlace2={setPlace2}
         handleStartComparison={handleStartComparison}
+        isComparing={isComparing}
       />
+      
+      {comparisonData && (
+        <ComparisonPanel
+          visible={comparisonVisible}
+          setVisible={setComparisonVisible}
+          data1={comparisonData.data1}
+          data2={comparisonData.data2}
+        />
+      )}
       
       <AgentChat />
     </div>
