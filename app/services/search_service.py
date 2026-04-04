@@ -14,6 +14,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
+INVALID_LOCATION_MESSAGE = (
+    "Please enter a real place name or a more specific prompt, for example: "
+    '"Eiffel Tower, Paris, France", "Times Square, New York", or "Tokyo, Japan".'
+)
+
 
 # ── LLM Setup ──────────────────────────────────────────────────────────────────
 
@@ -109,7 +114,7 @@ def semantic_search(query: str) -> dict:
             return {
                 "success": False,
                 "location": None,
-                "error": "Could not identify a location from your query",
+                "error": INVALID_LOCATION_MESSAGE,
             }
 
         # Step 2: Geocode the extracted location
@@ -118,7 +123,7 @@ def semantic_search(query: str) -> dict:
             return {
                 "success": False,
                 "location": None,
-                "error": f"Could not find coordinates for '{location_name}'",
+                "error": INVALID_LOCATION_MESSAGE,
             }
 
         return {

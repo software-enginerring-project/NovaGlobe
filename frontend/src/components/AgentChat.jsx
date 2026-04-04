@@ -2,13 +2,34 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import '../assets/css/agent.css';
 
+const SESSION_ID_KEY = 'agent_session_id';
+const SESSION_HISTORY_KEY = 'agent_session_history';
+
 const getSessionId = () => {
-  let sid = localStorage.getItem('agent_session_id');
+  let sid = sessionStorage.getItem(SESSION_ID_KEY);
   if (!sid) {
     sid = 'session_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('agent_session_id', sid);
+    sessionStorage.setItem(SESSION_ID_KEY, sid);
   }
   return sid;
+};
+
+const getSessionHistory = (sessionId) => {
+  try {
+    const raw = sessionStorage.getItem(`${SESSION_HISTORY_KEY}:${sessionId}`);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const setSessionHistory = (sessionId, messages) => {
+  try {
+    sessionStorage.setItem(`${SESSION_HISTORY_KEY}:${sessionId}`, JSON.stringify(messages));
+  } catch {
+    // Ignore session storage errors.
+  }
 };
 
 export default function AgentChat() {
@@ -16,14 +37,61 @@ export default function AgentChat() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const messagesEndRef = useRef(null);
+  const didReloadRef = useRef(false);
   
   const sessionId = getSessionId();
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const checkAuth = async ({ clearAnonOnReload = false } = {}) => {
       try {
-        const res = await axios.get(`http://localhost:5000/agent/history?session_id=${sessionId}`, { withCredentials: true });
+        await axios.get('/api/profile', { withCredentials: true });
+        setIsAuthenticated(true);
+      } catch (_) {
+        setIsAuthenticated(false);
+        if (clearAnonOnReload && didReloadRef.current) {
+          try {
+            sessionStorage.removeItem(`${SESSION_HISTORY_KEY}:${sessionId}`);
+          } catch {
+            // Ignore session storage errors.
+          }
+          setMessages([]);
+        }
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+
+    const nav = window.performance?.getEntriesByType?.('navigation')?.[0];
+    didReloadRef.current = nav?.type === 'reload';
+    void checkAuth({ clearAnonOnReload: true });
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const checkAuth = async () => {
+      try {
+        await axios.get('/api/profile', { withCredentials: true });
+        setIsAuthenticated(true);
+      } catch (_) {
+        setIsAuthenticated(false);
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    void checkAuth();
+  }, [isOpen]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!isAuthenticated) {
+        setMessages(getSessionHistory(sessionId));
+        return;
+      }
+      try {
+        const res = await axios.get(`/api/agent/history?session_id=${sessionId}`, { withCredentials: true });
         if (res.data && res.data.history) {
           setMessages(res.data.history);
         }
@@ -31,10 +99,10 @@ export default function AgentChat() {
         console.error("Failed to fetch agent history:", err);
       }
     };
-    if (isOpen && messages.length === 0) {
-      fetchHistory();
+    if (isOpen && messages.length === 0 && authChecked) {
+      void fetchHistory();
     }
-  }, [isOpen]);
+  }, [isOpen, messages.length, authChecked, isAuthenticated, sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,23 +116,37 @@ export default function AgentChat() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    const trimmedMessage = inputValue.trim();
+    if (!trimmedMessage) return;
 
-    const userMessage = { role: 'user', content: inputValue.trim() };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage = { role: 'user', content: trimmedMessage };
+    const pendingMessages = [...messages, userMessage];
+    setMessages(pendingMessages);
+    if (!isAuthenticated) {
+      setSessionHistory(sessionId, pendingMessages);
+    }
     setInputValue("");
     setIsLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/agent/chat', {
+      const payload = {
         message: userMessage.content,
-        session_id: sessionId
-      }, { withCredentials: true });
+        session_id: sessionId,
+      };
+      if (!isAuthenticated) {
+        payload.history = messages;
+      }
+
+      const res = await axios.post('/api/agent/chat', payload, { withCredentials: true });
 
       const data = res.data;
       
       const agentMessage = { role: 'agent', content: data.reply };
-      setMessages(prev => [...prev, agentMessage]);
+      const nextMessages = [...pendingMessages, agentMessage];
+      setMessages(nextMessages);
+      if (!isAuthenticated) {
+        setSessionHistory(sessionId, nextMessages);
+      }
 
       if (data.action && data.action.lat !== undefined && data.action.lng !== undefined) {
         window.dispatchEvent(new CustomEvent('globe:flyto', {
@@ -78,7 +160,12 @@ export default function AgentChat() {
       }
     } catch (err) {
       console.error("Failed to send message:", err);
-      setMessages(prev => [...prev, { role: 'agent', content: "Sorry, I am experiencing a temporary glitch..." }]);
+      const fallbackMessage = { role: 'agent', content: "Sorry, I am experiencing a temporary glitch..." };
+      const nextMessages = [...pendingMessages, fallbackMessage];
+      setMessages(nextMessages);
+      if (!isAuthenticated) {
+        setSessionHistory(sessionId, nextMessages);
+      }
     } finally {
       setIsLoading(false);
     }

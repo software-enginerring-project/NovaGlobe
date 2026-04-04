@@ -358,6 +358,7 @@ def agent_chat():
     data = request.get_json()
     message = data.get("message", "").strip() if data else ""
     session_id = data.get("session_id", "anonymous") if data else "anonymous"
+    client_history = data.get("history", []) if data else []
 
     user_id = None
     user = _get_authenticated_user()
@@ -366,7 +367,12 @@ def agent_chat():
 
     from .services.agent_service import process_agent_message
 
-    result = process_agent_message(user_id, session_id, message)
+    result = process_agent_message(
+        user_id,
+        session_id,
+        message,
+        session_history=client_history,
+    )
     if "error" in result:
         return jsonify(result), 400
 
@@ -379,9 +385,14 @@ def agent_chat():
 @main.route("/agent/history", methods=["GET"])
 def agent_history():
     session_id = request.args.get("session_id", "anonymous")
+    user_id = None
+    user = _get_authenticated_user()
+    if user:
+        user_id = user.get("user_id")
+
     from .services.agent_service import get_chat_history
 
-    history = get_chat_history(session_id)
+    history = get_chat_history(user_id, session_id)
     return jsonify({"history": history}), 200
 
 

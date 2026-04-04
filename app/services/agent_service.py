@@ -11,6 +11,11 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from app.models import db, ChatMessage
 
+INVALID_LOCATION_MESSAGE = (
+    "I could not find that location. Please enter a real place name or provide a more specific prompt, "
+    'for example: "Eiffel Tower, Paris, France", "Times Square, New York", or "Tokyo, Japan".'
+)
+
 def _get_llm():
     from langchain_groq import ChatGroq
     api_key = os.getenv("GROQ_API_KEY")
@@ -88,16 +93,68 @@ def _convert_history(history_records):
             messages.append(AIMessage(content=msg.content))
     return messages
 
-def process_agent_message(user_id, session_id, message):
+def _convert_client_history(history_items):
+    messages = []
+    if not isinstance(history_items, list):
+        return messages
+
+    for item in history_items[-10:]:
+        if not isinstance(item, dict):
+            continue
+        role = (item.get("role") or "").strip().lower()
+        content = (item.get("content") or "").strip()
+        if not content:
+            continue
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role in {"agent", "assistant"}:
+            messages.append(AIMessage(content=content))
+    return messages
+
+def _looks_like_location_intent(text: str) -> bool:
+    if not text:
+        return False
+
+    t = text.strip().lower()
+    if not t:
+        return False
+
+    if t in {"hi", "hello", "hey", "thanks", "thank you"}:
+        return False
+
+    intent_markers = [
+        "take me to",
+        "show me",
+        "go to",
+        "fly to",
+        "where is",
+        "locate",
+        "find",
+        "visit",
+    ]
+    if any(marker in t for marker in intent_markers):
+        return True
+
+    # Users often type only the place name.
+    return len(t.split()) <= 4 and not t.endswith("?")
+
+def process_agent_message(user_id, session_id, message, session_history=None):
     if not message or not message.strip():
         return {"error": "Empty message"}
 
-    user_msg = ChatMessage(user_id=user_id, session_id=session_id, role="user", content=message)
-    db.session.add(user_msg)
-    db.session.commit()
-    
-    history_records = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.timestamp.asc()).all()
-    chat_history = _convert_history(history_records[-10:])
+    if user_id:
+        user_msg = ChatMessage(user_id=user_id, session_id=session_id, role="user", content=message)
+        db.session.add(user_msg)
+        db.session.commit()
+        history_records = (
+            ChatMessage.query
+            .filter_by(user_id=user_id, session_id=session_id)
+            .order_by(ChatMessage.timestamp.asc())
+            .all()
+        )
+        chat_history = _convert_history(history_records[-10:])
+    else:
+        chat_history = _convert_client_history(session_history)
     
     tools = [get_location_weather, get_location_news]
 
@@ -169,15 +226,22 @@ Example tag: [LOCATION: Tokyo, Japan | A vibrant metropolis blending neon-lit sk
                 location_info = "A fascinating location to explore."
                 reply_text = reply_text[:match2.start()].strip()
         
-        agent_msg = ChatMessage(user_id=user_id, session_id=session_id, role="agent", content=reply_text)
-        db.session.add(agent_msg)
-        db.session.commit()
+        if user_id:
+            agent_msg = ChatMessage(user_id=user_id, session_id=session_id, role="agent", content=reply_text)
+            db.session.add(agent_msg)
+            db.session.commit()
 
         action = None
         if location_name:
             geo = _geocode(location_name)
             if geo:
                 action = {**geo, "focusName": location_name, "focusInfo": location_info}
+            else:
+                reply_text = INVALID_LOCATION_MESSAGE
+
+        # If the user appears to be asking for a place but no valid location was resolved.
+        if not action and _looks_like_location_intent(message):
+            reply_text = INVALID_LOCATION_MESSAGE
 
         return {"reply": reply_text, "action": action}
     except Exception as e:
@@ -185,17 +249,25 @@ Example tag: [LOCATION: Tokyo, Japan | A vibrant metropolis blending neon-lit sk
         print(f"Agent error: {e}")
         fallback_reply = "I am having a temporary connection issue, but I am still here. Please try again in a moment."
 
-        try:
-            agent_msg = ChatMessage(user_id=user_id, session_id=session_id, role="agent", content=fallback_reply)
-            db.session.add(agent_msg)
-            db.session.commit()
-        except:
-            db.session.rollback()
+        if user_id:
+            try:
+                agent_msg = ChatMessage(user_id=user_id, session_id=session_id, role="agent", content=fallback_reply)
+                db.session.add(agent_msg)
+                db.session.commit()
+            except:
+                db.session.rollback()
 
         return {"reply": fallback_reply, "action": None, "fallback": True}
 
-def get_chat_history(session_id):
-    records = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.timestamp.asc()).all()
+def get_chat_history(user_id, session_id):
+    if not user_id:
+        return []
+    records = (
+        ChatMessage.query
+        .filter_by(user_id=user_id, session_id=session_id)
+        .order_by(ChatMessage.timestamp.asc())
+        .all()
+    )
     return [{"role": msg.role, "content": msg.content, "timestamp": msg.timestamp.isoformat()} for msg in records]
 
 def generate_location_comparison(place1: str, place2: str) -> dict:
