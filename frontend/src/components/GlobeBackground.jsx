@@ -40,10 +40,10 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
   const [askAnswer, setAskAnswer] = useState(null);
   const [askLoading, setAskLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('weather');
-  const [popupFlipped, setPopupFlipped] = useState(false);
   const [sliderIndex, setSliderIndex] = useState(SLIDER_DAYS); // rightmost = today
   const latLngRef = useRef(null); // store current { lat, lng, name } for re-fetching
   const popupRef = useRef(null);
+  const popupContentRef = useRef(null);
   const baseLayerRef = useRef(null);
   const layerCacheRef = useRef(new Map());
   const layerLoadPromisesRef = useRef(new Map());
@@ -56,6 +56,13 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
   const osmTilesetRef = useRef(null);
   const osmTilesetLoadingRef = useRef(false);
   const cameraMovEndListenerRef = useRef(null);
+
+  const setCameraInputsEnabled = useCallback((enabled) => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.scene.screenSpaceCameraController.enableInputs = enabled;
+  }, []);
+
 
   const normalizeStyle = (styleKey) => (styleKey === "AUTO" ? "SATELLITE" : styleKey);
 
@@ -459,60 +466,52 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
   }, [mapStyle]);
 
   useEffect(() => {
-    const viewer = viewerRef.current;
-    if (!viewer || viewer.isDestroyed() || !popupData) return;
+    // When insight panel is open, disable globe camera controls so all
+    // wheel/trackpad/touch gestures are reserved for panel interaction.
+    const containerEl = containerRef.current;
+    setCameraInputsEnabled(!popupData);
 
-    const PIN_HEIGHT_PX = 64;  // approximate rendered pin height
-    const POPUP_WIDTH_PX = 320; // matches the card width
-    const VIEWPORT_PADDING = 12; // min distance from any viewport edge
+    // Hard-stop event delivery to Cesium canvas while popup is open.
+    // This prevents wheel/trackpad/touch gestures from zooming/panning the globe.
+    if (containerEl) {
+      containerEl.style.pointerEvents = popupData ? 'none' : 'auto';
+    }
 
-    const preRenderListener = () => {
-      if (!popupRef.current) return;
-      const canvasPos = Cesium.SceneTransforms.worldToWindowCoordinates(
-        viewer.scene,
-        popupData.position
-      );
-      if (canvasPos) {
-        popupRef.current.style.display = 'block';
-        const cardW = popupRef.current.offsetWidth || POPUP_WIDTH_PX;
-        const cardH = popupRef.current.offsetHeight || 120;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-
-        // Ideal: popup above the pin, centered horizontally
-        let x = Math.round(canvasPos.x - cardW / 2);
-        let y = Math.round(canvasPos.y - PIN_HEIGHT_PX - cardH);
-
-        // --- Flip below the pin if there's not enough room above ---
-        let flipped = false;
-        if (y < VIEWPORT_PADDING) {
-          // Place below the pin marker instead
-          y = Math.round(canvasPos.y + PIN_HEIGHT_PX / 2 + 8);
-          flipped = true;
-        }
-
-        // --- Clamp to viewport edges ---
-        // Horizontal clamping
-        if (x < VIEWPORT_PADDING) x = VIEWPORT_PADDING;
-        if (x + cardW > vw - VIEWPORT_PADDING) x = vw - VIEWPORT_PADDING - cardW;
-
-        // Vertical clamping (bottom edge)
-        if (y + cardH > vh - VIEWPORT_PADDING) y = vh - VIEWPORT_PADDING - cardH;
-        // Final top clamping (safety)
-        if (y < VIEWPORT_PADDING) y = VIEWPORT_PADDING;
-
-        setPopupFlipped(flipped);
-        popupRef.current.style.transform = `translate(${x}px, ${y}px)`;
-      } else {
-        popupRef.current.style.display = 'none';
+    return () => {
+      setCameraInputsEnabled(true);
+      if (containerEl) {
+        containerEl.style.pointerEvents = 'auto';
       }
     };
+  }, [popupData, setCameraInputsEnabled]);
 
-    viewer.scene.preRender.addEventListener(preRenderListener);
-    return () => {
-      viewer.scene.preRender.removeEventListener(preRenderListener);
-    };
-  }, [popupData]);
+  const submitAskQuestion = (e) => {
+    e.preventDefault();
+    const q = askInput.trim();
+    if (!q || askLoading) return;
+    window.dispatchEvent(new Event('agent:close'));
+    setActiveTab('ai');
+    setAskLoading(true);
+    setAskAnswer(null);
+    const loc = latLngRef.current;
+    fetch(`${API_BASE}/news/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: popupData?.title || '',
+        question: q,
+        lat: loc?.lat,
+        lng: loc?.lng,
+      }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.success && d.answer) setAskAnswer(d.answer); })
+      .catch(err => {
+        console.warn('Ask failed:', err);
+        setAskAnswer('Sorry, I could not process your question right now.');
+      })
+      .finally(() => setAskLoading(false));
+  };
 
   return (
     <>
@@ -551,6 +550,16 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
           border-radius: 4px;
           background: transparent;
         }
+        .nova-popup-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .nova-popup-scroll::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+          background: transparent;
+        }
       `}</style>
       <div
         ref={containerRef}
@@ -564,27 +573,9 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
       {popupData && (
         <div
           ref={popupRef}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0,
-            zIndex: 10,
-            pointerEvents: 'auto',
-            transform: 'translate(-9999px, -9999px)',
-            width: '340px',
-            maxHeight: '480px',
-            padding: '0',
-            borderRadius: '18px',
-            background: 'rgba(8, 20, 36, 0.94)',
-            backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(13, 202, 240, 0.35)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.7), 0 0 24px rgba(13,202,240,0.12)',
-            color: '#fff',
-            fontFamily: "'Inter', sans-serif",
-            animation: 'popupFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
+          className="nova-insight-panel"
+          onMouseDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
@@ -715,8 +706,9 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
             flexShrink: 0,
           }}>
             {[
-              { key: 'weather', label: '☀️ Weather' },
-              { key: 'news', label: '📰 News' },
+              { key: 'weather', label: 'Weather' },
+              { key: 'news', label: 'News' },
+              { key: 'ai', label: 'AI' },
             ].map(tab => (
               <button
                 key={tab.key}
@@ -742,7 +734,19 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
           </div>
 
           {/* Scrollable Content */}
-          <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          <div
+            className="nova-popup-scroll"
+            ref={popupContentRef}
+            style={{
+              overflowY: 'scroll',
+              overflowX: 'hidden',
+              minHeight: 0,
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y',
+              paddingBottom: '10px',
+            }}
+          >
 
             {/* ── Weather Tab ── */}
             {activeTab === 'weather' && (
@@ -905,7 +909,12 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                   </div>
                 )}
 
-                {/* Q&A Answer Display */}
+              </div>
+            )}
+
+            {/* AI Tab (Shared insights across Weather and News) */}
+            {activeTab === 'ai' && (
+              <div style={{ padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {askLoading && (
                   <div style={{ textAlign: 'center', padding: '10px 0' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#a78bfa', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
@@ -915,7 +924,7 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                         borderRadius: '50%',
                         animation: 'spin 0.8s linear infinite',
                       }} />
-                      Analyzing…
+                      Analyzing...
                     </div>
                   </div>
                 )}
@@ -926,130 +935,104 @@ export default function GlobeBackground({ mapStyle = "AUTO" }) {
                     border: '1px solid rgba(167,139,250,0.2)',
                     borderRadius: '12px',
                     padding: '12px 14px',
+                    maxHeight: '250px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
                   }}>
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: '6px',
                       marginBottom: '8px',
                     }}>
-                      <span style={{ fontSize: '0.85rem' }}>💡</span>
+                      <span style={{ fontSize: '0.85rem' }}>AI</span>
                       <span style={{
                         fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase',
                         letterSpacing: '0.1em', color: '#a78bfa',
-                      }}>AI Answer</span>
+                      }}>Answer</span>
                     </div>
                     <p style={{
                       margin: 0, fontSize: '0.76rem', lineHeight: 1.6,
                       color: '#c0dae8', fontFamily: "'Inter', sans-serif",
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
                     }}>
                       {askAnswer}
                     </p>
                   </div>
                 )}
-
-                {/* Search Bar — Ask about this location */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const q = askInput.trim();
-                    if (!q || askLoading) return;
-                    // Auto-close the guide panel
-                    window.dispatchEvent(new Event('agent:close'));
-                    setAskLoading(true);
-                    setAskAnswer(null);
-                    const loc = latLngRef.current;
-                    fetch(`${API_BASE}/news/ask`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        location: popupData?.title || '',
-                        question: q,
-                        lat: loc?.lat,
-                        lng: loc?.lng,
-                      }),
-                    })
-                      .then(r => r.json())
-                      .then(d => { if (d.success && d.answer) setAskAnswer(d.answer); })
-                      .catch(err => {
-                        console.warn('Ask failed:', err);
-                        setAskAnswer('Sorry, I could not process your question right now.');
-                      })
-                      .finally(() => setAskLoading(false));
-                  }}
-                  style={{
-                    display: 'flex', gap: '6px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '12px',
-                    padding: '6px 8px',
-                    transition: 'border-color 0.2s ease',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(13,202,240,0.4)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                  }}
-                >
-                  <input
-                    type="text"
-                    value={askInput}
-                    onChange={(e) => setAskInput(e.target.value)}
-                    placeholder="Ask about this location..."
-                    disabled={askLoading}
-                    style={{
-                      flex: 1,
-                      background: 'none',
-                      border: 'none',
-                      outline: 'none',
-                      color: '#d0e8f5',
-                      fontSize: '0.75rem',
-                      fontFamily: "'Inter', sans-serif",
-                      padding: '4px 6px',
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={askLoading || !askInput.trim()}
-                    style={{
-                      background: askInput.trim() ? 'rgba(13,202,240,0.15)' : 'rgba(255,255,255,0.04)',
-                      border: '1px solid',
-                      borderColor: askInput.trim() ? 'rgba(13,202,240,0.3)' : 'rgba(255,255,255,0.06)',
-                      borderRadius: '8px',
-                      padding: '4px 10px',
-                      cursor: askInput.trim() ? 'pointer' : 'default',
-                      color: askInput.trim() ? '#0dcaf0' : '#3d6e85',
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      fontFamily: "'Inter', sans-serif",
-                      transition: 'all 0.2s ease',
-                      flexShrink: 0,
-                    }}
-                  >
-                    Ask
-                  </button>
-                </form>
               </div>
             )}
 
           </div>
 
-          {/* Arrow pointing toward the marker – flips when popup is below */}
           <div style={{
-            position: 'absolute',
-            ...(popupFlipped
-              ? { top: '-12px', bottom: 'auto' }
-              : { bottom: '-12px', top: 'auto' }),
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 0, height: 0,
-            borderLeft: '12px solid transparent',
-            borderRight: '12px solid transparent',
-            ...(popupFlipped
-              ? { borderBottom: '12px solid rgba(8, 20, 36, 0.94)', borderTop: 'none' }
-              : { borderTop: '12px solid rgba(8, 20, 36, 0.94)', borderBottom: 'none' }),
-          }} />
+            display: 'block',
+            padding: '8px 16px 12px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: 'linear-gradient(to top, rgba(8, 20, 36, 0.98), rgba(8, 20, 36, 0.92))',
+          }}>
+            <form
+              onSubmit={submitAskQuestion}
+              style={{
+                display: 'flex',
+                gap: '6px',
+                background: 'rgba(8, 20, 36, 0.96)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '12px',
+                padding: '6px 8px',
+                transition: 'border-color 0.2s ease',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(13,202,240,0.4)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+              }}
+            >
+              <input
+                type="text"
+                value={askInput}
+                onChange={(e) => setAskInput(e.target.value)}
+                placeholder="Ask about this location..."
+                disabled={askLoading}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#d0e8f5',
+                  fontSize: '0.75rem',
+                  fontFamily: "'Inter', sans-serif",
+                  padding: '4px 6px',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={askLoading || !askInput.trim()}
+                style={{
+                  background: askInput.trim() ? 'rgba(13,202,240,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: '1px solid',
+                  borderColor: askInput.trim() ? 'rgba(13,202,240,0.3)' : 'rgba(255,255,255,0.06)',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  cursor: askInput.trim() ? 'pointer' : 'default',
+                  color: askInput.trim() ? '#0dcaf0' : '#3d6e85',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  fontFamily: "'Inter', sans-serif",
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                }}
+              >
+                Ask
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </>
   );
 }
+
+

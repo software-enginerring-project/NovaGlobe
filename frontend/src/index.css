@@ -69,6 +69,65 @@ body {
   }
 }
 
+@keyframes popupFadeInMobile {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.nova-insight-panel {
+  position: fixed;
+  top: 104px;
+  right: 24px;
+  left: auto;
+  z-index: 40;
+  pointer-events: auto;
+  transform: none;
+  width: min(420px, calc(100vw - 48px));
+  height: min(680px, calc(100vh - 132px));
+  padding: 0;
+  border-radius: 18px;
+  background: rgba(8, 20, 36, 0.94);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(13, 202, 240, 0.35);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(13, 202, 240, 0.12);
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  animation: popupFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+@media (max-width: 960px) {
+  .nova-insight-panel {
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    width: min(560px, calc(100vw - 16px));
+    height: min(72vh, 620px);
+    max-height: calc(100vh - 88px);
+    border-radius: 16px;
+    animation: popupFadeInMobile 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@media (max-width: 520px) {
+  .nova-insight-panel {
+    bottom: 8px;
+    width: calc(100vw - 12px);
+    height: min(74vh, 600px);
+  }
+}
+
 #root {
   width: 1126px;
   max-width: 100%;
