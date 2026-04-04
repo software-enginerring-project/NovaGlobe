@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../assets/css/profile1.css';
 import '../assets/css/feedback.css';
 
@@ -7,11 +8,16 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState('');
+  const [profileMessage, setProfileMessage] = useState({ text: '', type: '' });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   
   // Profile Content
-  const [username, setUsername] = useState('Rhea Kline');
-  const [email, setEmail] = useState('rhea.kline@novaglobe.io');
-  const [role, setRole] = useState('Planetary Systems Lead');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('viewer');
+  const [memberSince, setMemberSince] = useState('');
   
   // Feedback
   const [feedbackText, setFeedbackText] = useState('');
@@ -22,10 +28,85 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState({ text: '', type: '' });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleEditToggle = () => setIsEditing(!isEditing);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const response = await axios.get('/api/profile', { withCredentials: true });
+        const user = response?.data?.user || {};
+
+        setUsername(user.name || 'NovaGlobe User');
+        setEmail(user.email || '');
+        setRole(user.role || 'viewer');
+
+        const createdAt = user.created_at ? new Date(user.created_at) : null;
+        if (createdAt && !Number.isNaN(createdAt.getTime())) {
+          setMemberSince(
+            createdAt.toLocaleDateString(undefined, {
+              month: 'long',
+              year: 'numeric',
+            })
+          );
+        } else {
+          setMemberSince('N/A');
+        }
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          navigate('/login');
+          return;
+        }
+        setProfileError(error?.response?.data?.error || 'Failed to load profile');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+  const handleEditToggle = async () => {
+    setProfileMessage({ text: '', type: '' });
+
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+
+    if (isSavingProfile) return;
+
+    try {
+      setIsSavingProfile(true);
+      const response = await axios.put(
+        '/api/profile',
+        { name: username, email },
+        { withCredentials: true }
+      );
+
+      const updatedUser = response?.data?.user || {};
+      setUsername(updatedUser.name || username);
+      setEmail(updatedUser.email || email);
+      setProfileMessage({
+        text: response?.data?.message || 'Profile updated successfully.',
+        type: 'success',
+      });
+      setIsEditing(false);
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        navigate('/login');
+        return;
+      }
+      setProfileMessage({
+        text: error?.response?.data?.error || 'Failed to update profile.',
+        type: 'error',
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const toggleFeedback = (e) => {
     e.stopPropagation();
@@ -50,7 +131,13 @@ export default function Profile() {
     }, 1600);
   };
 
-  const submitPassword = () => {
+  const submitPassword = async () => {
+    if (isUpdatingPassword) return;
+
+    if (!currentPassword) {
+      setPasswordMessage({ text: 'Please fill in your current password.', type: 'error' });
+      return;
+    }
     if (!newPassword || !confirmPassword) {
       setPasswordMessage({ text: 'Please fill in the new and confirm password fields.', type: 'error' });
       return;
@@ -59,22 +146,64 @@ export default function Profile() {
       setPasswordMessage({ text: 'New password and confirm password do not match.', type: 'error' });
       return;
     }
-    
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setPasswordMessage({ text: 'Password updated.', type: 'success' });
-    
-    setTimeout(() => {
-      setPasswordOpen(false);
-      setPasswordMessage({ text: '', type: '' });
-    }, 1400);
+
+    try {
+      setIsUpdatingPassword(true);
+      const response = await axios.post(
+        '/api/auth/change-password',
+        {
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        },
+        { withCredentials: true }
+      );
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordMessage({ text: response?.data?.message || 'Password updated successfully.', type: 'success' });
+
+      setTimeout(() => {
+        setPasswordOpen(false);
+        setPasswordMessage({ text: '', type: '' });
+      }, 1400);
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        navigate('/login');
+        return;
+      }
+      setPasswordMessage({
+        text: error?.response?.data?.error || 'Failed to update password.',
+        type: 'error',
+      });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   const closePanels = () => {
     setFeedbackOpen(false);
     setPasswordOpen(false);
   };
+
+  const handleSignOut = async (event) => {
+    event.preventDefault();
+    try {
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+    } catch (_) {
+      // Ignore logout errors and redirect regardless.
+    }
+    navigate('/login');
+  };
+
+  if (loadingProfile) {
+    return (
+      <div className="page-wrapper" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#dce9ff' }}>Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-wrapper" onClick={closePanels} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -88,14 +217,22 @@ export default function Profile() {
         </div>
         <nav className="nav-links">
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Dashboard</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Sign out</a>
+          <a href="#" onClick={handleSignOut}>Sign out</a>
         </nav>
       </header>
 
       <main className="page">
         <section className={`profile-card ${isEditing ? 'is-editing' : ''}`} id="profile-card">
+          {profileError && (
+            <p style={{ color: '#ff8a8a', textAlign: 'center', marginBottom: 10 }}>{profileError}</p>
+          )}
+          {profileMessage.text && (
+            <p style={{ color: profileMessage.type === 'error' ? '#ff8a8a' : '#7ee5b8', textAlign: 'center', marginBottom: 10 }}>
+              {profileMessage.text}
+            </p>
+          )}
           <div className="avatar-wrap">
-            <div className="avatar">RK</div>
+            <div className="avatar">{(username || 'N').slice(0, 2).toUpperCase()}</div>
           </div>
 
           <h1 
@@ -106,9 +243,8 @@ export default function Profile() {
           >{username}</h1>
           <span 
             className="role-pill editable" 
-            contentEditable={isEditing}
+            contentEditable={false}
             suppressContentEditableWarning
-            onBlur={(e) => setRole(e.target.innerText)}
           >{role}</span>
 
           <div className="info-list">
@@ -150,14 +286,14 @@ export default function Profile() {
               <span className="info-icon purple">M</span>
               <div>
                 <p className="info-label">Member Since</p>
-                <p className="info-value">January 2024</p>
+                <p className="info-value">{memberSince}</p>
               </div>
             </div>
           </div>
 
           <div className="actions">
-            <button type="button" className="ghost" onClick={handleEditToggle}>
-              {isEditing ? 'Save' : 'Edit Profile'}
+            <button type="button" className="ghost" onClick={handleEditToggle} disabled={isSavingProfile}>
+              {isSavingProfile ? 'Saving...' : isEditing ? 'Save' : 'Edit Profile'}
             </button>
             <button
               type="button"
@@ -218,8 +354,8 @@ export default function Profile() {
               {passwordMessage.text}
             </p>
 
-            <button type="button" className="password-submit" onClick={submitPassword}>
-              Update Password
+            <button type="button" className="password-submit" onClick={submitPassword} disabled={isUpdatingPassword}>
+              {isUpdatingPassword ? 'Updating...' : 'Update Password'}
             </button>
           </div>
 

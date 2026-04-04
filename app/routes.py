@@ -6,6 +6,7 @@ import requests as http_requests
 from flask import Blueprint, current_app, jsonify, make_response, request
 from google.auth.transport import requests as grequests
 from google.oauth2 import id_token
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from .models import (
     AlertEvent,
@@ -96,6 +97,141 @@ def _json_error(message, code=400):
     return jsonify({"error": message}), code
 
 
+def _build_auth_response(user: User, message: str):
+    payload = {
+        "user_id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+    }
+    jwt_token = jwt.encode(
+        payload,
+        current_app.config["JWT_SECRET"],
+        algorithm="HS256",
+    )
+
+    role_row = UserRole.query.filter_by(user_id=user.id).first()
+    role = role_row.role if role_row else "viewer"
+
+    response = make_response(
+        {
+            "message": message,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "role": role,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            },
+        }
+    )
+    response.set_cookie(
+        "token",
+        jwt_token,
+        httponly=True,
+        secure=False,
+        samesite="Lax",
+    )
+    return response
+
+
+@main.route("/auth/signup", methods=["POST"])
+def signup():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    if not name:
+        return _json_error("name is required")
+    if not email:
+        return _json_error("email is required")
+    if len(password) < 6:
+        return _json_error("password must be at least 6 characters")
+
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return _json_error("An account with this email already exists", 409)
+
+    user = User(
+        name=name,
+        email=email,
+        password_hash=generate_password_hash(password),
+    )
+    db.session.add(user)
+    db.session.flush()
+    db.session.add(UserRole(user_id=user.id, role="viewer"))
+    db.session.commit()
+
+    return jsonify(
+        {
+            "message": "Account created successfully",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role": "viewer",
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            },
+        }
+    ), 201
+
+
+@main.route("/auth/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    if not email or not password:
+        return _json_error("email and password are required")
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.password_hash or not check_password_hash(user.password_hash, password):
+        return _json_error("Invalid email or password", 401)
+
+    return _build_auth_response(user, "Logged in successfully")
+
+
+@main.route("/auth/logout", methods=["POST"])
+def logout():
+    response = make_response({"message": "Logged out successfully"})
+    response.set_cookie("token", "", expires=0, httponly=True, secure=False, samesite="Lax")
+    return response
+
+
+@main.route("/auth/change-password", methods=["POST"])
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+    confirm_password = data.get("confirm_password") or ""
+
+    if not current_password or not new_password or not confirm_password:
+        return _json_error("current_password, new_password, and confirm_password are required")
+    if len(new_password) < 6:
+        return _json_error("new_password must be at least 6 characters")
+    if new_password != confirm_password:
+        return _json_error("new_password and confirm_password must match")
+
+    user = User.query.get(request.user.get("user_id"))
+    if not user:
+        return _json_error("User not found", 404)
+
+    if not user.password_hash:
+        return _json_error("This account does not support password login yet", 400)
+    if not check_password_hash(user.password_hash, current_password):
+        return _json_error("Current password is incorrect", 401)
+    if check_password_hash(user.password_hash, new_password):
+        return _json_error("New password must be different from current password")
+
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+
+    return jsonify({"message": "Password updated successfully"})
+
+
 @main.route("/auth/google", methods=["POST"])
 def google_auth():
     data = request.get_json()
@@ -128,38 +264,7 @@ def google_auth():
             db.session.add(UserRole(user_id=user.id, role="admin"))
             db.session.commit()
 
-        # Create JWT
-        payload = {
-            "user_id": user.id,  # DB ID
-            "email": email,
-            "exp": datetime.now(timezone.utc) + timedelta(days=7),
-        }
-
-        jwt_token = jwt.encode(
-            payload,
-            current_app.config["JWT_SECRET"],
-            algorithm="HS256",
-        )
-
-        response = make_response(
-            {
-                "message": "Login successful",
-                "user": {
-                    "email": email,
-                    "name": name,
-                },
-            }
-        )
-
-        response.set_cookie(
-            "token",
-            jwt_token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-        )
-
-        return response
+        return _build_auth_response(user, "Login successful")
 
     except Exception as e:
         print("Google Auth Error:", e)
@@ -170,9 +275,53 @@ def google_auth():
 @login_required
 def profile():
     user_id = request.user.get("user_id")
+    user = User.query.get(user_id)
+    if not user:
+        return _json_error("User not found", 404)
+
     role_row = UserRole.query.filter_by(user_id=user_id).first()
     role = role_row.role if role_row else "viewer"
-    return jsonify({"message": "Authorized", "user": request.user, "role": role})
+    return jsonify(
+        {
+            "message": "Authorized",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role": role,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            },
+        }
+    )
+
+
+@main.route("/profile", methods=["PUT"])
+@login_required
+def update_profile():
+    user_id = request.user.get("user_id")
+    user = User.query.get(user_id)
+    if not user:
+        return _json_error("User not found", 404)
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+
+    if not name:
+        return _json_error("name is required")
+    if not email:
+        return _json_error("email is required")
+
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user and existing_user.id != user_id:
+        return _json_error("This email is already used by another account", 409)
+
+    user.name = name
+    user.email = email
+    db.session.commit()
+
+    # Refresh auth cookie so JWT payload (name/email) stays in sync after profile edits.
+    return _build_auth_response(user, "Profile updated successfully")
 
 
 @main.route("/status")
