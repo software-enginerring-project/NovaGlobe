@@ -9,6 +9,8 @@ const Navbar = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const navigate = useNavigate();
 
   const goToLogin = () => navigate('/login');
@@ -19,10 +21,19 @@ const Navbar = ({
 
     const checkAuth = async () => {
       try {
-        await axios.get('/api/profile', { withCredentials: true });
-        if (isMounted) setIsAuthenticated(true);
+        const response = await axios.get('/api/profile', { withCredentials: true });
+        const user = response?.data?.user || {};
+        if (isMounted) {
+          setIsAuthenticated(true);
+          setAvatarUrl(user.avatar_url || '');
+          setDisplayName(user.name || '');
+        }
       } catch (_) {
-        if (isMounted) setIsAuthenticated(false);
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setAvatarUrl('');
+          setDisplayName('');
+        }
       }
     };
 
@@ -40,9 +51,18 @@ const Navbar = ({
       // Redirect even if logout request fails.
     }
     setIsAuthenticated(false);
+    setAvatarUrl('');
+    setDisplayName('');
     setMenuOpen(false);
     navigate('/login');
   };
+
+  const initials = (displayName || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('');
 
   return (
     <header className="pointer-events-auto relative z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-navy/80 backdrop-blur-2xl border border-cyan/20 shadow-2xl rounded-2xl md:rounded-3xl transition-all duration-300 focus-within:border-cyan/40 focus-within:shadow-[0_16px_40px_rgba(0,0,0,0.6),0_0_20px_rgba(8,201,192,0.18)]">
@@ -85,32 +105,47 @@ const Navbar = ({
         {/* Avatar Wrap */}
         <div id="nova-avatar" className="relative z-50 shrink-0">
           <button
-            className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-cyan/10 border border-cyan/30 text-ink font-semibold text-xs md:text-[13px] flex items-center justify-center hover:bg-cyan/20 hover:border-cyan/50 transition-all duration-200"
+            className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-cyan/10 border border-cyan/30 text-ink font-semibold text-xs md:text-[13px] flex items-center justify-center overflow-hidden hover:bg-cyan/20 hover:border-cyan/50 transition-all duration-200"
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
             aria-haspopup="menu"
           >
-            NG
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarUrl('')}
+              />
+            ) : (
+              isAuthenticated ? (
+                <span>{initials}</span>
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-5 h-5 md:w-6 md:h-6 text-cyan/90"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 19c0-3.2 3.1-5.5 7-5.5s7 2.3 7 5.5" />
+                </svg>
+              )
+            )}
           </button>
           
           {/* Avatar Dropdown */}
           {menuOpen && (
             <div className="absolute right-0 top-[calc(100%+12px)] w-56 bg-[#0a1522] border border-cyan/50 rounded-2xl p-2.5 shadow-[0_28px_70px_rgba(0,0,0,0.75)] animate-in fade-in zoom-in-95 duration-200">
-              {isAuthenticated ? (
+              {!isAuthenticated ? (
                 <button
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
-                  type="button"
-                  onClick={handleSignOut}
-                >
-                  <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" /></svg>
-                  </span>
-                  <span>Sign out</span>
-                </button>
-              ) : (
-                <button
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors"
                   type="button"
                   onClick={() => { goToLogin(); setMenuOpen(false); }}
                 >
@@ -119,26 +154,31 @@ const Navbar = ({
                   </span>
                   <span>Sign in / Sign up</span>
                 </button>
+              ) : (
+                <>
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                    type="button"
+                    onClick={handleSignOut}
+                  >
+                    <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 3H5a2 2 0 00-2 2v14a2 2 0 002 2h5v-2H5V5h5V3zm6.3 4.3l-1.4 1.4 1.3 1.3H9v2h7.2l-1.3 1.3 1.4 1.4L20 11l-3.7-3.7z" /></svg>
+                    </span>
+                    <span>Sign out</span>
+                  </button>
+                  <div className="h-px bg-cyan/30 mx-1 mb-1.5" />
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
+                    type="button"
+                    onClick={() => { goToProfile(); setMenuOpen(false); }}
+                  >
+                    <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" /></svg>
+                    </span>
+                    <span>My profile</span>
+                  </button>
+                </>
               )}
-              <div className="h-px bg-cyan/30 mx-1 mb-1.5" />
-              {isAuthenticated && (
-                <button
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors mb-1.5"
-                  type="button"
-                  onClick={() => { goToProfile(); setMenuOpen(false); }}
-                >
-                  <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" /></svg>
-                  </span>
-                  <span>My profile</span>
-                </button>
-              )}
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-ink bg-[#0d1f31] border border-cyan/20 hover:bg-[#122a42] hover:border-cyan/70 transition-colors" type="button">
-                <span className="text-cyan w-4 h-4 md:w-[18px] md:h-[18px] flex items-center justify-center shrink-0" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5v5.4l3.5 2.1-.8 1.3L11.5 13V7H13z" /></svg>
-                </span>
-                <span>History</span>
-              </button>
             </div>
           )}
         </div>
