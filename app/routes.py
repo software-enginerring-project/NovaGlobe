@@ -97,11 +97,12 @@ def _json_error(message, code=400):
     return jsonify({"error": message}), code
 
 
-def _build_auth_response(user: User, message: str):
+def _build_auth_response(user: User, message: str, avatar_url: str | None = None):
     payload = {
         "user_id": user.id,
         "email": user.email,
         "name": user.name,
+        "avatar_url": avatar_url,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
     }
     jwt_token = jwt.encode(
@@ -122,6 +123,7 @@ def _build_auth_response(user: User, message: str):
                 "name": user.name,
                 "role": role,
                 "created_at": user.created_at.isoformat() if user.created_at else None,
+                "avatar_url": avatar_url,
             },
         }
     )
@@ -248,6 +250,7 @@ def google_auth():
         google_id = idinfo["sub"]
         email = idinfo["email"]
         name = idinfo.get("name")
+        picture = idinfo.get("picture")
 
         # Step 1: Check user in DB
         user = User.query.filter_by(google_id=google_id).first()
@@ -264,7 +267,7 @@ def google_auth():
             db.session.add(UserRole(user_id=user.id, role="admin"))
             db.session.commit()
 
-        return _build_auth_response(user, "Login successful")
+        return _build_auth_response(user, "Login successful", avatar_url=picture)
 
     except Exception as e:
         print("Google Auth Error:", e)
@@ -290,6 +293,7 @@ def profile():
                 "email": user.email,
                 "role": role,
                 "created_at": user.created_at.isoformat() if user.created_at else None,
+                "avatar_url": request.user.get("avatar_url"),
             },
         }
     )
@@ -321,7 +325,11 @@ def update_profile():
     db.session.commit()
 
     # Refresh auth cookie so JWT payload (name/email) stays in sync after profile edits.
-    return _build_auth_response(user, "Profile updated successfully")
+    return _build_auth_response(
+        user,
+        "Profile updated successfully",
+        avatar_url=request.user.get("avatar_url"),
+    )
 
 
 @main.route("/status")
